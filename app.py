@@ -6,6 +6,45 @@ app = Flask(__name__)
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
+import pandas as pd
+import os
+
+# Path to your extracted CSV file
+DATA_PATH = os.path.join(os.path.dirname(__file__), "data", "inspections.csv")
+
+def load_inspections():
+    """Load inspection records from CSV into a list of dicts."""
+    df = pd.read_csv(DATA_PATH)
+    # Convert each row to a dict; rename or filter columns as needed
+    records = df.to_dict(orient="records")
+    # Example: unify keys with existing REPORTS format
+    inspections = []
+    for r in records:
+        inspections.append({
+            "id":        str(r.get("report_id", "")),
+            "equipment": r.get("equipment_id", r.get("Equipment", "")),
+            "issue":     r.get("fault_description", r.get("Issue", "")),
+            "fix":       r.get("corrective_action", r.get("Fix", "")),
+            "date":      r.get("inspection_date", r.get("Date", "")),
+        })
+    return inspections
+
+# Load the CSV data once at startup
+INSPECTIONS = load_inspections()
+
+# Combine with your hard‑coded reports
+REPORTS = INSPECTIONS + [
+    {
+        "id": "005157",
+        "equipment": "ISO DHGU2348103",
+        "issue": "Leaking flange",
+        "fix": "Repaired flange, replaced industrial pump belt A96, tested",
+        "date": "22 July 2025",
+    },
+    # … other manual entries …
+]
+
+
 REPORTS = [
     {
         "id": "005157",
