@@ -46,7 +46,7 @@ def whatsapp_bot():
     prompt = generate_prompt(incoming_msg)
 
     try:
-        response = openai.ChatCompletion.create(
+        response = openai.chat.completions.create(
             model="gpt-4",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.4,
