@@ -39,7 +39,7 @@ for col in ("id","equipment","issue","fix","date"):
     else:
         all_df[col] = ""
 
-# Drop rows without an ID
+# Drop any records without an ID
 all_df = all_df[all_df["id"].str.strip() != ""]
 
 # ——————————————————————————————
@@ -47,7 +47,7 @@ all_df = all_df[all_df["id"].str.strip() != ""]
 # ——————————————————————————————
 client     = chromadb.Client()  
 collection = client.get_or_create_collection("service_reports")
-openai_api = OpenAI()           
+openai_api = OpenAI()            # reads OPENAI_API_KEY
 
 # ——————————————————————————————
 # 4) Lazy indexing setup
@@ -57,19 +57,18 @@ _indexed_flag = False
 
 def ensure_index():
     global _indexed_flag
-    # Only run once
     if _indexed_flag:
         return
     with _index_lock:
         if _indexed_flag:
             return
         for _, row in all_df.iterrows():
-            text     = f"{row['issue']} {row['fix']}"
-            resp     = openai_api.embeddings.create(
+            text = f"{row['issue']} {row['fix']}"
+            resp = openai_api.embeddings.create(
                 input=text,
                 model="text-embedding-3-small"
             )
-            emb      = resp.data[0].embedding
+            emb = resp.data[0].embedding
             collection.add(
                 ids=[row["id"]],
                 embeddings=[emb],
@@ -90,25 +89,25 @@ def ensure_index():
 # ——————————————————————————————
 app = Flask(__name__)
 
+# Health check for GET /
+@app.route("/", methods=["GET"])
+def health_check():
+    return "OK", 200
+
 def generate_prompt(question: str, top_k: int = 5) -> str:
-    # Embed the incoming question
-    resp   = openai_api.embeddings.create(
+    resp  = openai_api.embeddings.create(
         input=question,
         model="text-embedding-3-small"
     )
-    q_emb  = resp.data[0].embedding
+    q_emb = resp.data[0].embedding
 
-    # Retrieve top_k records
     results = collection.query(
         query_embeddings=[q_emb],
         n_results=top_k
     )
     hits = results["metadatas"][0]
 
-    # Build prompt
-    prompt = (
-        "You are a CryoFERM AI assistant. Use these past service records to answer:\n\n"
-    )
+    prompt = "You are a CryoFERM AI assistant. Use these past service records to answer:\n\n"
     for rpt in hits:
         prompt += (
             f"- Report {rpt['id']} | Equipment: {rpt['equipment']} | Date: {rpt['date']}\n"
@@ -120,7 +119,7 @@ def generate_prompt(question: str, top_k: int = 5) -> str:
 
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_bot():
-    # Build the index on the very first request
+    # Build index on first request
     ensure_index()
 
     incoming = request.values.get("Body", "").strip()
