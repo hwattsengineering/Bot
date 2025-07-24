@@ -1,5 +1,6 @@
 flask
-openai
 twilio
-gunicorn
 pandas
+chromadb
+openai>=1.0.0
+gunicorn
