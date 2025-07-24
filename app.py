@@ -67,17 +67,6 @@ def load_inspections():
 # Load the CSV data once at startup
 INSPECTIONS = load_inspections()
 
-# Combine with your hard‑coded reports
-REPORTS = INSPECTIONS + [
-    {
-        "id": "005157",
-        "equipment": "ISO DHGU2348103",
-        "issue": "Leaking flange",
-        "fix": "Repaired flange, replaced industrial pump belt A96, tested",
-        "date": "22 July 2025",
-    },
-    # … other manual entries …
-]
 
 
 
