@@ -1,5 +1,6 @@
 import os
 import glob
+import threading
 import pandas as pd
 import chromadb
 from openai import OpenAI
@@ -38,38 +39,51 @@ for col in ("id","equipment","issue","fix","date"):
     else:
         all_df[col] = ""
 
-# Drop any records with empty ID (ChromaDB requires non-empty IDs)
+# Drop rows without an ID
 all_df = all_df[all_df["id"].str.strip() != ""]
 
 # ——————————————————————————————
-# 3) Initialize ChromaDB & OpenAI
+# 3) Prepare ChromaDB & OpenAI client
 # ——————————————————————————————
-client     = chromadb.Client()  # in-memory by default
+client     = chromadb.Client()  
 collection = client.get_or_create_collection("service_reports")
-openai_api = OpenAI()           # reads OPENAI_API_KEY from env
+openai_api = OpenAI()           
 
 # ——————————————————————————————
-# 4) Index every record once at startup
+# 4) Lazy indexing setup
 # ——————————————————————————————
-for _, row in all_df.iterrows():
-    text     = f"{row['issue']} {row['fix']}"
-    emb_resp = openai_api.embeddings.create(
-        input=text,
-        model="text-embedding-3-small"
-    )
-    emb      = emb_resp.data[0].embedding
-    collection.add(
-        ids=[row["id"]],
-        embeddings=[emb],
-        metadatas=[{
-            "id":        row["id"],
-            "equipment": row["equipment"],
-            "issue":     row["issue"],
-            "fix":       row["fix"],
-            "date":      row["date"]
-        }],
-        documents=[text]
-    )
+_index_lock   = threading.Lock()
+_indexed_flag = False
+
+def ensure_index():
+    global _indexed_flag
+    # Only run once
+    if _indexed_flag:
+        return
+    with _index_lock:
+        if _indexed_flag:
+            return
+        for _, row in all_df.iterrows():
+            text     = f"{row['issue']} {row['fix']}"
+            resp     = openai_api.embeddings.create(
+                input=text,
+                model="text-embedding-3-small"
+            )
+            emb      = resp.data[0].embedding
+            collection.add(
+                ids=[row["id"]],
+                embeddings=[emb],
+                metadatas=[{
+                    "id":        row["id"],
+                    "equipment": row["equipment"],
+                    "issue":     row["issue"],
+                    "fix":       row["fix"],
+                    "date":      row["date"]
+                }],
+                documents=[text]
+            )
+        _indexed_flag = True
+        print("🔍 Indexed all service records into ChromaDB")
 
 # ——————————————————————————————
 # 5) Flask & Twilio setup
@@ -78,20 +92,20 @@ app = Flask(__name__)
 
 def generate_prompt(question: str, top_k: int = 5) -> str:
     # Embed the incoming question
-    q_resp = openai_api.embeddings.create(
+    resp   = openai_api.embeddings.create(
         input=question,
         model="text-embedding-3-small"
     )
-    q_emb   = q_resp.data[0].embedding
+    q_emb  = resp.data[0].embedding
 
-    # Retrieve the top_k most relevant records
+    # Retrieve top_k records
     results = collection.query(
         query_embeddings=[q_emb],
         n_results=top_k
     )
-    hits = results["metadatas"][0]  # list of record dicts
+    hits = results["metadatas"][0]
 
-    # Build concise prompt
+    # Build prompt
     prompt = (
         "You are a CryoFERM AI assistant. Use these past service records to answer:\n\n"
     )
@@ -106,18 +120,21 @@ def generate_prompt(question: str, top_k: int = 5) -> str:
 
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_bot():
+    # Build the index on the very first request
+    ensure_index()
+
     incoming = request.values.get("Body", "").strip()
     if not incoming:
         return "OK"
 
     prompt = generate_prompt(incoming, top_k=5)
     try:
-        resp = openai_api.chat.completions.create(
+        chat = openai_api.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3
         )
-        answer = resp.choices[0].message.content.strip()
+        answer = chat.choices[0].message.content.strip()
     except Exception as e:
         answer = f"Error: {e}"
 
