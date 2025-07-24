@@ -38,6 +38,9 @@ for col in ("id","equipment","issue","fix","date"):
     else:
         all_df[col] = ""
 
+# Drop any records with empty ID (ChromaDB requires non-empty IDs)
+all_df = all_df[all_df["id"].str.strip() != ""]
+
 # ——————————————————————————————
 # 3) Initialize ChromaDB & OpenAI
 # ——————————————————————————————
@@ -56,7 +59,7 @@ for _, row in all_df.iterrows():
     )
     emb      = emb_resp.data[0].embedding
     collection.add(
-        ids=[str(row["id"])],
+        ids=[row["id"]],
         embeddings=[emb],
         metadatas=[{
             "id":        row["id"],
