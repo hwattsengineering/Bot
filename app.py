@@ -2,7 +2,6 @@ import os
 import glob
 import pandas as pd
 import chromadb
-from chromadb.config import Settings
 from openai import OpenAI
 from flask import Flask, request
 from twilio.twiml.messaging_response import MessagingResponse
@@ -34,26 +33,20 @@ all_df.rename(columns={
 }, inplace=True)
 
 for col in ("id","equipment","issue","fix","date"):
-    if col not in all_df.columns:
-        all_df[col] = ""
-    all_df[col] = all_df[col].fillna("").astype(str)
+    all_df[col] = all_df.get(col, "").fillna("").astype(str)
 
 # ——————————————————————————————
 # 3) Initialize ChromaDB & OpenAI
 # ——————————————————————————————
-# Uses local DuckDB+Parquet persistence in .chromadb/
-client     = chromadb.Client(Settings(
-    chroma_db_impl="duckdb+parquet",
-    persist_directory=".chromadb"
-))
+# Use the new default in‑memory client
+client     = chromadb.Client()
 collection = client.get_or_create_collection("service_reports")
 openai_api = OpenAI()  # reads OPENAI_API_KEY from env
 
 # ——————————————————————————————
 # 4) Index every record once at startup
 # ——————————————————————————————
-for idx, row in all_df.iterrows():
-    # Create a simple text fingerprint from issue+fix
+for _, row in all_df.iterrows():
     text = f"{row['issue']} {row['fix']}"
     emb  = openai_api.embeddings.create(
         input=text,
@@ -78,20 +71,20 @@ for idx, row in all_df.iterrows():
 app = Flask(__name__)
 
 def generate_prompt(question: str, top_k: int = 5) -> str:
-    # Embed the question
+    # Embed the incoming question
     q_emb = openai_api.embeddings.create(
         input=question,
         model="text-embedding-3-small"
     )["data"][0]["embedding"]
 
-    # Retrieve top_k matching records
+    # Retrieve the top_k most relevant records
     results = collection.query(
         query_embeddings=[q_emb],
         n_results=top_k
     )
-    hits = results["metadatas"][0]  # list of record dicts
+    hits = results["metadatas"][0]
 
-    # Build concise prompt
+    # Build a concise LLM prompt
     prompt = (
         "You are a CryoFERM AI assistant. Use these past service records to answer:\n\n"
     )
@@ -126,6 +119,5 @@ def whatsapp_bot():
     return str(twiml)
 
 if __name__ == "__main__":
-    # Local debug server
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
