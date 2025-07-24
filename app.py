@@ -1,6 +1,41 @@
 from flask import Flask, request
 import openai
 import os
+import os
+import glob
+import pandas as pd
+
+# ————————————————
+# Load all CSVs from data/ as your knowledge base
+# ————————————————
+DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+csv_paths = glob.glob(os.path.join(DATA_DIR, "*.csv"))
+
+# Read and concatenate all inspection CSVs
+dfs = []
+for path in csv_paths:
+    dfs.append(pd.read_csv(path))
+all_inspections_df = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
+
+# Normalize column names to match your bot’s fields
+all_inspections_df.rename(columns={
+    "report_id":        "id",
+    "equipment_id":     "equipment",
+    "fault_description":"issue",
+    "corrective_action":"fix",
+    "inspection_date":  "date"
+}, inplace=True)
+
+# Ensure all expected columns exist
+for col in ("id","equipment","issue","fix","date"):
+    if col not in all_inspections_df.columns:
+        all_inspections_df[col] = ""
+
+# Build the REPORTS list for prompting
+REPORTS = all_inspections_df[["id","equipment","issue","fix","date"]] \
+              .fillna("") \
+              .astype(str) \
+              .to_dict(orient="records")
 
 app = Flask(__name__)
 
@@ -45,29 +80,7 @@ REPORTS = INSPECTIONS + [
 ]
 
 
-REPORTS = [
-    {
-        "id": "005157",
-        "equipment": "ISO DHGU2348103",
-        "issue": "Leaking flange",
-        "fix": "Repaired flange, replaced industrial pump belt A96, tested",
-        "date": "22 July 2025",
-    },
-    {
-        "id": "005158",
-        "equipment": "Tanker 606",
-        "issue": "Supply coupling gasket leak, bleed valve seal issue",
-        "fix": "Replaced gasket, tightened gland, replaced bleed valve seals",
-        "date": "22 July 2025",
-    },
-    {
-        "id": "004878",
-        "equipment": "ISO DHGU2348206",
-        "issue": "Gauge non-functional",
-        "fix": "Manually opened liquid valve and filled vessel",
-        "date": "15 May 2025",
-    }
-]
+
 
 def generate_prompt(user_question):
     prompt = "You are a CryoFERM AI assistant. Help technicians troubleshoot faults using past service reports.\n\n"
