@@ -1,105 +1,131 @@
-from flask import Flask, request
-import openai
-import os
 import os
 import glob
 import pandas as pd
+import chromadb
+from chromadb.config import Settings
+from openai import OpenAI
+from flask import Flask, request
+from twilio.twiml.messaging_response import MessagingResponse
 
-# ————————————————
-# Load all CSVs from data/ as your knowledge base
-# ————————————————
-DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+# ——————————————————————————————
+# 1) Load & concatenate all CSVs in data/
+# ——————————————————————————————
+DATA_DIR  = os.path.join(os.path.dirname(__file__), "data")
 csv_paths = glob.glob(os.path.join(DATA_DIR, "*.csv"))
 
-# Read and concatenate all inspection CSVs
 dfs = []
 for path in csv_paths:
-    dfs.append(pd.read_csv(path))
-all_inspections_df = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
+    try:
+        dfs.append(pd.read_csv(path))
+    except Exception as e:
+        print(f"Warning: failed to read {path}: {e}")
 
-# Normalize column names to match your bot’s fields
-all_inspections_df.rename(columns={
-    "report_id":        "id",
-    "equipment_id":     "equipment",
-    "fault_description":"issue",
-    "corrective_action":"fix",
-    "inspection_date":  "date"
+all_df = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
+
+# ——————————————————————————————
+# 2) Normalize & ensure expected columns
+# ——————————————————————————————
+all_df.rename(columns={
+    "report_id":         "id",
+    "equipment_id":      "equipment",
+    "fault_description": "issue",
+    "corrective_action": "fix",
+    "inspection_date":   "date"
 }, inplace=True)
 
-# Ensure all expected columns exist
 for col in ("id","equipment","issue","fix","date"):
-    if col not in all_inspections_df.columns:
-        all_inspections_df[col] = ""
+    if col not in all_df.columns:
+        all_df[col] = ""
+    all_df[col] = all_df[col].fillna("").astype(str)
 
-# Build the REPORTS list for prompting
-REPORTS = all_inspections_df[["id","equipment","issue","fix","date"]] \
-              .fillna("") \
-              .astype(str) \
-              .to_dict(orient="records")
+# ——————————————————————————————
+# 3) Initialize ChromaDB & OpenAI
+# ——————————————————————————————
+# Uses local DuckDB+Parquet persistence in .chromadb/
+client     = chromadb.Client(Settings(
+    chroma_db_impl="duckdb+parquet",
+    persist_directory=".chromadb"
+))
+collection = client.get_or_create_collection("service_reports")
+openai_api = OpenAI()  # reads OPENAI_API_KEY from env
 
+# ——————————————————————————————
+# 4) Index every record once at startup
+# ——————————————————————————————
+for idx, row in all_df.iterrows():
+    # Create a simple text fingerprint from issue+fix
+    text = f"{row['issue']} {row['fix']}"
+    emb  = openai_api.embeddings.create(
+        input=text,
+        model="text-embedding-3-small"
+    )["data"][0]["embedding"]
+    collection.add(
+        ids=[str(row["id"])],
+        embeddings=[emb],
+        metadatas=[{
+            "id":        row["id"],
+            "equipment": row["equipment"],
+            "issue":     row["issue"],
+            "fix":       row["fix"],
+            "date":      row["date"]
+        }],
+        documents=[text]
+    )
+
+# ——————————————————————————————
+# 5) Flask & Twilio setup
+# ——————————————————————————————
 app = Flask(__name__)
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
+def generate_prompt(question: str, top_k: int = 5) -> str:
+    # Embed the question
+    q_emb = openai_api.embeddings.create(
+        input=question,
+        model="text-embedding-3-small"
+    )["data"][0]["embedding"]
 
-import pandas as pd
-import os
+    # Retrieve top_k matching records
+    results = collection.query(
+        query_embeddings=[q_emb],
+        n_results=top_k
+    )
+    hits = results["metadatas"][0]  # list of record dicts
 
-# Path to your extracted CSV file
-DATA_PATH = os.path.join(os.path.dirname(__file__), "data", "inspections.csv")
-
-def load_inspections():
-    """Load inspection records from CSV into a list of dicts."""
-    df = pd.read_csv(DATA_PATH)
-    # Convert each row to a dict; rename or filter columns as needed
-    records = df.to_dict(orient="records")
-    # Example: unify keys with existing REPORTS format
-    inspections = []
-    for r in records:
-        inspections.append({
-            "id":        str(r.get("report_id", "")),
-            "equipment": r.get("equipment_id", r.get("Equipment", "")),
-            "issue":     r.get("fault_description", r.get("Issue", "")),
-            "fix":       r.get("corrective_action", r.get("Fix", "")),
-            "date":      r.get("inspection_date", r.get("Date", "")),
-        })
-    return inspections
-
-# Load the CSV data once at startup
-INSPECTIONS = load_inspections()
-
-
-
-
-
-def generate_prompt(user_question):
-    prompt = "You are a CryoFERM AI assistant. Help technicians troubleshoot faults using past service reports.\n\n"
-    for report in REPORTS:
-        prompt += f"- Report {report['id']} | Equipment: {report['equipment']} | Date: {report['date']}\n  Issue: {report['issue']}\n  Fix: {report['fix']}\n"
-    prompt += f"\nTechnician's question: {user_question}\nAnswer:"
+    # Build concise prompt
+    prompt = (
+        "You are a CryoFERM AI assistant. Use these past service records to answer:\n\n"
+    )
+    for rpt in hits:
+        prompt += (
+            f"- Report {rpt['id']} | Equipment: {rpt['equipment']} | Date: {rpt['date']}\n"
+            f"  Issue: {rpt['issue']}\n"
+            f"  Fix: {rpt['fix']}\n"
+        )
+    prompt += f"\nTechnician's question: {question}\nAnswer:"
     return prompt
 
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_bot():
-    incoming_msg = request.values.get("Body", "").strip()
-    if not incoming_msg:
+    incoming = request.values.get("Body", "").strip()
+    if not incoming:
         return "OK"
 
-    prompt = generate_prompt(incoming_msg)
-
+    prompt = generate_prompt(incoming, top_k=5)
     try:
-        response = openai.chat.completions.create(
+        resp = openai_api.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.4,
+            temperature=0.3
         )
-        reply = response.choices[0].message.content.strip()
+        answer = resp.choices[0].message.content.strip()
     except Exception as e:
-        reply = f"Error: {str(e)}"
+        answer = f"Error: {e}"
 
-    from twilio.twiml.messaging_response import MessagingResponse
     twiml = MessagingResponse()
-    twiml.message(reply)
+    twiml.message(answer)
     return str(twiml)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # Local debug server
+    port = int(os.getenv("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=True)
