@@ -32,16 +32,19 @@ all_df.rename(columns={
     "inspection_date":   "date"
 }, inplace=True)
 
+# Correct handling of missing vs present columns
 for col in ("id","equipment","issue","fix","date"):
-    all_df[col] = all_df.get(col, "").fillna("").astype(str)
+    if col in all_df.columns:
+        all_df[col] = all_df[col].fillna("").astype(str)
+    else:
+        all_df[col] = ""  # whole-column default
 
 # ——————————————————————————————
 # 3) Initialize ChromaDB & OpenAI
 # ——————————————————————————————
-# Use the new default in‑memory client
-client     = chromadb.Client()
+client     = chromadb.Client()  # in-memory default
 collection = client.get_or_create_collection("service_reports")
-openai_api = OpenAI()  # reads OPENAI_API_KEY from env
+openai_api = OpenAI()  # uses OPENAI_API_KEY
 
 # ——————————————————————————————
 # 4) Index every record once at startup
@@ -71,20 +74,20 @@ for _, row in all_df.iterrows():
 app = Flask(__name__)
 
 def generate_prompt(question: str, top_k: int = 5) -> str:
-    # Embed the incoming question
+    # Embed the question
     q_emb = openai_api.embeddings.create(
         input=question,
         model="text-embedding-3-small"
     )["data"][0]["embedding"]
 
-    # Retrieve the top_k most relevant records
+    # Retrieve top_k records
     results = collection.query(
         query_embeddings=[q_emb],
         n_results=top_k
     )
     hits = results["metadatas"][0]
 
-    # Build a concise LLM prompt
+    # Build prompt
     prompt = (
         "You are a CryoFERM AI assistant. Use these past service records to answer:\n\n"
     )
