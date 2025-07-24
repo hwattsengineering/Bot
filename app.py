@@ -32,29 +32,29 @@ all_df.rename(columns={
     "inspection_date":   "date"
 }, inplace=True)
 
-# Correct handling of missing vs present columns
 for col in ("id","equipment","issue","fix","date"):
     if col in all_df.columns:
         all_df[col] = all_df[col].fillna("").astype(str)
     else:
-        all_df[col] = ""  # whole-column default
+        all_df[col] = ""
 
 # ——————————————————————————————
 # 3) Initialize ChromaDB & OpenAI
 # ——————————————————————————————
-client     = chromadb.Client()  # in-memory default
+client     = chromadb.Client()  # in-memory by default
 collection = client.get_or_create_collection("service_reports")
-openai_api = OpenAI()  # uses OPENAI_API_KEY
+openai_api = OpenAI()           # reads OPENAI_API_KEY from env
 
 # ——————————————————————————————
 # 4) Index every record once at startup
 # ——————————————————————————————
 for _, row in all_df.iterrows():
-    text = f"{row['issue']} {row['fix']}"
-    emb  = openai_api.embeddings.create(
+    text     = f"{row['issue']} {row['fix']}"
+    emb_resp = openai_api.embeddings.create(
         input=text,
         model="text-embedding-3-small"
-    )["data"][0]["embedding"]
+    )
+    emb      = emb_resp.data[0].embedding
     collection.add(
         ids=[str(row["id"])],
         embeddings=[emb],
@@ -74,20 +74,21 @@ for _, row in all_df.iterrows():
 app = Flask(__name__)
 
 def generate_prompt(question: str, top_k: int = 5) -> str:
-    # Embed the question
-    q_emb = openai_api.embeddings.create(
+    # Embed the incoming question
+    q_resp = openai_api.embeddings.create(
         input=question,
         model="text-embedding-3-small"
-    )["data"][0]["embedding"]
+    )
+    q_emb   = q_resp.data[0].embedding
 
-    # Retrieve top_k records
+    # Retrieve the top_k most relevant records
     results = collection.query(
         query_embeddings=[q_emb],
         n_results=top_k
     )
-    hits = results["metadatas"][0]
+    hits = results["metadatas"][0]  # list of record dicts
 
-    # Build prompt
+    # Build concise prompt
     prompt = (
         "You are a CryoFERM AI assistant. Use these past service records to answer:\n\n"
     )
