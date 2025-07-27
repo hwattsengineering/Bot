@@ -2,6 +2,10 @@ import os
 import glob
 import threading
 import re
+import time
+import datetime
+import csv
+
 import pandas as pd
 import chromadb
 from openai import OpenAI
@@ -24,30 +28,33 @@ for path in csv_paths:
 all_df = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
 
 # ——————————————————————————————
-# 2) Ensure & normalize columns in one go
+# 2) Normalize & map columns (author → technician)
 # ——————————————————————————————
-desired_cols = [
-    "id",
-    "date",
-    "equipment_code",
-    "equipment_name",
-    "issue",
-    "solution",
-    "technician",
-    "tags"
-]
-all_df = all_df.reindex(columns=desired_cols).fillna("").astype(str)
+all_df.rename(columns={
+    "report_id":         "id",
+    "equipment_id":      "equipment",
+    "inspection_date":   "date",
+    "fault_description": "issue",
+    "corrective_action": "fix",
+    "author":            "technician",
+    "Prepared by":       "technician",
+}, inplace=True)
 
-# Drop any records without an ID or date
+for col in ("id","equipment","date","issue","fix","technician"):
+    if col in all_df.columns:
+        all_df[col] = all_df[col].fillna("").astype(str)
+    else:
+        all_df[col] = ""
+
+# Drop any records without an ID
 all_df = all_df[all_df["id"].str.strip() != ""]
-all_df = all_df[all_df["date"].str.strip() != ""]
 
 # ——————————————————————————————
 # 3) Prepare ChromaDB & OpenAI
 # ——————————————————————————————
-client     = chromadb.Client()
-collection = client.get_or_create_collection("service_records")
-openai_api = OpenAI()  # reads OPENAI_API_KEY from env
+client     = chromadb.Client()  
+collection = client.get_or_create_collection("service_reports")
+openai_api = OpenAI()            # reads OPENAI_API_KEY
 
 # ——————————————————————————————
 # 4) Lazy indexing setup
@@ -56,6 +63,7 @@ _index_lock   = threading.Lock()
 _indexed_flag = False
 
 def ensure_index():
+    """Embed & index all records on first use."""
     global _indexed_flag
     if _indexed_flag:
         return
@@ -63,8 +71,7 @@ def ensure_index():
         if _indexed_flag:
             return
         for _, row in all_df.iterrows():
-            # combine issue, solution, and tags into embedding text
-            text = f"Issue: {row['issue']} Solution: {row['solution']} Tags: {row['tags']}"
+            text = f"{row['issue']} {row['fix']}"
             resp = openai_api.embeddings.create(
                 input=text,
                 model="text-embedding-3-small"
@@ -74,14 +81,12 @@ def ensure_index():
                 ids=[row["id"]],
                 embeddings=[emb],
                 metadatas=[{
-                    "id":              row["id"],
-                    "date":            row["date"],
-                    "equipment_code":  row["equipment_code"],
-                    "equipment_name":  row["equipment_name"],
-                    "issue":           row["issue"],
-                    "solution":        row["solution"],
-                    "technician":      row["technician"],
-                    "tags":            row["tags"],
+                    "id":         row["id"],
+                    "equipment":  row["equipment"],
+                    "date":       row["date"],
+                    "issue":      row["issue"],
+                    "fix":        row["fix"],
+                    "technician": row["technician"],
                 }],
                 documents=[text]
             )
@@ -89,15 +94,53 @@ def ensure_index():
         print("🔍 Indexed all service records into ChromaDB")
 
 # ——————————————————————————————
-# 5) Flask & Twilio setup
+# 5) Learning setup
+# ——————————————————————————————
+LEARNED_CSV     = os.path.join(DATA_DIR, "learned.csv")
+_pending_learns = {}  # maps sender → original question
+
+def learn_record(question: str, answer: str):
+    """Append a Q&A to learned.csv and index it immediately."""
+    new_id = f"LEARNED-{int(time.time())}"
+    today  = datetime.date.today().isoformat()
+    row = {
+        "id":         new_id,
+        "equipment":  "",
+        "date":       today,
+        "issue":      question,
+        "fix":        answer,
+        "technician": "",
+    }
+    # Write to learned.csv
+    exists = os.path.isfile(LEARNED_CSV)
+    with open(LEARNED_CSV, "a", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=row.keys())
+        if not exists:
+            writer.writeheader()
+        writer.writerow(row)
+    # Index it
+    text = f"{row['issue']} {row['fix']}"
+    resp = openai_api.embeddings.create(input=text, model="text-embedding-3-small")
+    emb  = resp.data[0].embedding
+    collection.add(
+        ids=[row["id"]],
+        embeddings=[emb],
+        metadatas=[row],
+        documents=[text]
+    )
+
+# ——————————————————————————————
+# 6) Flask & Twilio setup
 # ——————————————————————————————
 app = Flask(__name__)
 
+# Health‑check
 @app.route("/", methods=["GET"])
 def health_check():
     return "OK", 200
 
 def handle_last_job_query(question: str):
+    """Return direct answer for 'last job' questions, or None."""
     m = re.search(
         r"what did (\w+) do on (?:his|her|their) last job",
         question, re.IGNORECASE
@@ -105,41 +148,37 @@ def handle_last_job_query(question: str):
     if not m:
         return None
     name = m.group(1)
-    df = all_df[all_df["technician"].str.contains(name, case=False)]
+    df   = all_df[all_df["technician"].str.contains(name, case=False)]
     if df.empty:
         return f"Sorry, I don’t see any jobs by {name} in our records."
-    df = df.assign(_dt=pd.to_datetime(df["date"], errors="coerce"))
+    df   = df.assign(_dt=pd.to_datetime(df["date"], errors="coerce"))
     last = df.sort_values("_dt", ascending=False).iloc[0]
     return (
         f"{name}'s last job (Report {last['id']} on {last['date']}):\n"
         f"Issue: {last['issue']}\n"
-        f"Solution: {last['solution']}"
+        f"Fix: {last['fix']}"
     )
 
 def generate_prompt(question: str, top_k: int = 5) -> str:
+    """Build a strict retrieval prompt from top_k records."""
     resp  = openai_api.embeddings.create(
-        input=question,
-        model="text-embedding-3-small"
+        input=question, model="text-embedding-3-small"
     )
     q_emb = resp.data[0].embedding
+    results = collection.query(query_embeddings=[q_emb], n_results=top_k)
+    hits    = results["metadatas"][0]
 
-    results = collection.query(
-        query_embeddings=[q_emb],
-        n_results=top_k
-    )
-    hits = results["metadatas"][0]
-
-    prompt = (
-        "You are a CryoFERM AI assistant. Use these service records to answer.\n"
+    prompt  = (
+        "You are a CryoFERM AI assistant. You have access to these service records.\n"
         "ONLY answer based on these records. Do NOT invent any details.\n"
-        "If the answer isn’t here, say so and ask if it’s OK to search externally.\n\n"
+        "If the answer isn't here, you will say so and ask to learn it.\n\n"
     )
     for rpt in hits:
         prompt += (
-            f"- ID: {rpt['id']} | Date: {rpt['date']} | {rpt['equipment_code']} {rpt['equipment_name']} |"
-            f" Technician: {rpt['technician']}\n"
+            f"- Report {rpt['id']} | Equipment: {rpt['equipment']} | "
+            f"Date: {rpt['date']} | Technician: {rpt['technician']}\n"
             f"  Issue: {rpt['issue']}\n"
-            f"  Solution: {rpt['solution']}\n\n"
+            f"  Fix: {rpt['fix']}\n\n"
         )
     prompt += f"Technician question: {question}\nAnswer:"
     return prompt
@@ -148,25 +187,39 @@ def generate_prompt(question: str, top_k: int = 5) -> str:
 def whatsapp_bot():
     ensure_index()
 
+    sender   = request.values.get("From")
     incoming = request.values.get("Body", "").strip()
     if not incoming:
         return "OK"
 
-    direct = handle_last_job_query(incoming)
-    if direct:
-        reply = direct
+    # A) If waiting to learn, store the answer
+    if sender in _pending_learns:
+        orig_q = _pending_learns.pop(sender)
+        learn_record(orig_q, incoming)
+        reply = "Thanks! I’ve learned that and will remember it going forward."
     else:
-        prompt = generate_prompt(incoming, top_k=5)
-        resp   = openai_api.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role":"user","content":prompt}],
-            temperature=0.3
-        )
-        answer = resp.choices[0].message.content.strip()
-        if re.search(r"don’t have|don't have|no records", answer, re.IGNORECASE):
-            reply = f"{answer}\n\nWould you like me to search external resources?"
+        # B) Last‐job shortcut
+        direct = handle_last_job_query(incoming)
+        if direct:
+            reply = direct
         else:
-            reply = answer
+            # C) Retrieval + LLM
+            prompt = generate_prompt(incoming, top_k=5)
+            chat   = openai_api.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3
+            )
+            answer = chat.choices[0].message.content.strip()
+            # D) If it admits no info, ask to learn
+            if "I don’t have" in answer or "don't have" in answer:
+                reply = (
+                    "I’m missing that in my records. Could you tell me the correct answer? "
+                    "Just reply with the details."
+                )
+                _pending_learns[sender] = incoming
+            else:
+                reply = answer
 
     twiml = MessagingResponse()
     twiml.message(reply)
