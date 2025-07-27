@@ -8,9 +8,7 @@ from openai import OpenAI
 from flask import Flask, request
 from twilio.twiml.messaging_response import MessagingResponse
 
-# ——————————————————————————————
-# 1) Paths & robust CSV loading
-# ——————————————————————————————
+# ——— 1) Paths & robust CSV loading ——————————————
 DATA_DIR  = os.path.join(os.path.dirname(__file__), "data")
 CSV_PATHS = glob.glob(os.path.join(DATA_DIR, "*.csv"))
 
@@ -36,17 +34,14 @@ def load_all_data():
     return combined
 
 all_df = load_all_data()
+print(f"Loaded {len(all_df)} records from CSVs")
 
-# ——————————————————————————————
-# 2) ChromaDB & OpenAI setup
-# ——————————————————————————————
+# ——— 2) ChromaDB & OpenAI setup ——————————————
 client     = chromadb.Client()
 collection = client.get_or_create_collection("service_records")
-openai_api = OpenAI()  # expects OPENAI_API_KEY
+openai_api = OpenAI()  # uses OPENAI_API_KEY
 
-# ——————————————————————————————
-# 3) Lazy‐indexing
-# ——————————————————————————————
+# ——— 3) Lazy‐indexing ———————————————————————
 _index_lock   = threading.Lock()
 _indexed_flag = False
 
@@ -57,6 +52,7 @@ def ensure_index():
     with _index_lock:
         if _indexed_flag:
             return
+        print("🔍 Starting indexing of service records...")
         for _, row in all_df.iterrows():
             text = f"Issue: {row['issue']}  Solution: {row['solution']}  Tags: {row['tags']}"
             resp = openai_api.embeddings.create(
@@ -71,14 +67,13 @@ def ensure_index():
                 documents=[text]
             )
         _indexed_flag = True
-        print("🔍 Indexed all service records")
+        print("✅ Completed indexing")
 
-# ——————————————————————————————
-# 4) Feedback loop
-# ——————————————————————————————
+# ——— 4) Feedback loop ———————————————————————
 feedback_re = re.compile(r"^CORRECT\s+(\w+)\s*:\s*(.+)$", re.IGNORECASE)
 
 def handle_feedback(report_id: str, new_solution: str) -> str:
+    print(f"🔧 Received correction for {report_id}: {new_solution}")
     updated = False
     for path in CSV_PATHS:
         df = pd.read_csv(path, dtype=str)
@@ -86,10 +81,11 @@ def handle_feedback(report_id: str, new_solution: str) -> str:
             df.loc[df["id"] == report_id, "solution"] = new_solution
             df.to_csv(path, index=False)
             updated = True
+            print(f"  • Updated CSV {os.path.basename(path)}")
     if not updated:
-        return f"❌ Could not find report {report_id} to update."
+        return f"❌ Could not find report {report_id}."
 
-    # reload data and re-index
+    # Reload and re-index
     global all_df, _indexed_flag
     all_df = load_all_data()
     _indexed_flag = False
@@ -98,11 +94,9 @@ def handle_feedback(report_id: str, new_solution: str) -> str:
     except Exception:
         pass
     ensure_index()
-    return f"✅ Updated report {report_id} with corrected solution."
+    return f"✅ Updated report {report_id} with new solution."
 
-# ——————————————————————————————
-# 5) Flask & Twilio webhook
-# ——————————————————————————————
+# ——— 5) Flask & Twilio webhook —————————————————
 app = Flask(__name__)
 
 @app.route("/", methods=["GET"])
@@ -151,33 +145,38 @@ def generate_prompt(question: str, top_k: int = 5) -> str:
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_bot():
     incoming = request.values.get("Body", "").strip()
-    if not incoming:
-        return "OK"
+    print("📩 Incoming message:", repr(incoming))
 
-    # Feedback?
+    # 1) Feedback?
     m = feedback_re.match(incoming)
     if m:
         report_id, new_solution = m.group(1), m.group(2)
         reply = handle_feedback(report_id, new_solution)
     else:
+        # ensure index for retrieval
         ensure_index()
-        # Last-job query?
+
+        # 2) Last-job?
         direct = handle_last_job_query(incoming)
         if direct:
             reply = direct
         else:
+            # 3) Retrieval + LLM
             prompt = generate_prompt(incoming)
+            print("📝 Prompt sent to OpenAI:", prompt.replace("\n", " | "))
             resp   = openai_api.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[{"role":"user","content":prompt}],
                 temperature=0.3
             )
             answer = resp.choices[0].message.content.strip()
+            print("💬 OpenAI replied:", answer)
             if re.search(r"don’t have|don't have|no record", answer, re.IGNORECASE):
                 reply = f"{answer}\n\nWould you like me to search externally?"
             else:
                 reply = answer
 
+    print("➡️ Replying with:", reply)
     twiml = MessagingResponse()
     twiml.message(reply)
     return str(twiml)
