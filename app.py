@@ -39,10 +39,8 @@ all_df.rename(columns={
     "Prepared by":       "technician",
 }, inplace=True)
 
-# keep only the columns we need, fill blanks
 wanted = ["id", "equipment", "date", "issue", "fix", "technician"]
 all_df = all_df.reindex(columns=wanted).fillna("").astype(str)
-# drop any truly blank rows
 all_df = all_df[all_df["id"].str.strip() != ""]
 
 # ——————————————————————————————
@@ -50,7 +48,7 @@ all_df = all_df[all_df["id"].str.strip() != ""]
 # ——————————————————————————————
 client     = chromadb.Client()
 collection = client.get_or_create_collection("service_reports")
-openai_api = OpenAI()        # uses OPENAI_API_KEY
+openai_api = OpenAI()        # relies on OPENAI_API_KEY
 
 # ——————————————————————————————
 # 4) Index all records once (thread‑safe)
@@ -62,7 +60,7 @@ def ensure_indexed():
     global _indexed_flag
     if _indexed_flag:
         return
-    with _indexed_lock:
+    with _index_lock:
         if _indexed_flag:
             return
 
