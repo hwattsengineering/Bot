@@ -27,15 +27,15 @@ all_df = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
 # 2) Normalize & map columns
 # ——————————————————————————————
 all_df.rename(columns={
-    "report_id":                                  "id",
-    "equipment_id":                               "equipment",
-    "inspection_date":                            "date",
-    "fault_description":                          "issue",
-    "Description of works carried out":           "fix",
-    "Fix_Solution":                               "fix",
-    "Fix_solution":                               "fix",
-    "FST Report_Completion _Sign Off Service Tech:": "technician",
-    "Prepared by":                                "technician",
+    "report_id":                                   "id",
+    "equipment_id":                                "equipment",
+    "inspection_date":                             "date",
+    "fault_description":                           "issue",
+    "Description of works carried out":            "fix",
+    "Fix_Solution":                                "fix",
+    "Fix_solution":                                "fix",
+    "FST Report_Completion _Sign Off Service Tech:":"technician",
+    "Prepared by":                                 "technician",
 }, inplace=True)
 
 # Reindex once to avoid fragmentation, fill missing with empty strings, cast all to str
@@ -50,7 +50,7 @@ all_df = all_df[all_df["id"].str.strip() != ""]
 # ——————————————————————————————
 client     = chromadb.Client()  
 collection = client.get_or_create_collection("service_reports")
-openai_api = OpenAI()  # uses OPENAI_API_KEY
+openai_api = OpenAI()  # reads OPENAI_API_KEY env var
 
 # ——————————————————————————————
 # 4) Lazy indexing setup
@@ -62,7 +62,7 @@ def ensure_index():
     global _indexed_flag
     if _indexed_flag:
         return
-    with _indexed_lock:
+    with _index_lock:
         if _indexed_flag:
             return
         for _, row in all_df.iterrows():
