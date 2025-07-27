@@ -1,0 +1,710 @@
+Job report information	Person	Type of work being performed	Description of works carried out/Solution/Fix	Description of works carried out_notes	List follow up work that is needed	Date and time work was completed	completed		
+Job Report  005170 / Kane / 4287 / Iso Unload / CYSU2075627 / CO2 / 1500 / 19 / 450 / 19 / 45000L / 19 / 22 Jul 2025 / CCEP Sydney / CCEP	Angus Watts	Iso Unload	"CO2 tank 4
+Start level 35.5 tons - Fill level 44.5 tons
+CO2 tank 2
+Start level 45.5tons - Fill level 47.5tons
+Stop fill @ 11.30am, production began using product.
+Start fill @ 12.45pm
+Start level 46tons, filled for 10 minutes before the tank was full and the site cancelled the remaining liquid. 
+
+This needs to be looked at with your telemetry to know how much room you need to unload a full iso."		Iso was not fully unloaded	2025-07-23T06:53:02Z	2025-07-23T06:54:15Z		
+Job Report  005169 / Simon whitrod / 04220 / Vessel Refurb / PLV / 440-024-m9 / 23 Jul 2025 / Cryoferm  / Ala	Watts Group	Vessel Refurb							
+Job Report  005168 / Justin Robinson / JB04274 / Safety Valve Testing / 23 Jul 2025 / Qld Health- PA hosp pathology / Qld health	Justin Robison	Safety Valve Testing	"Attend site at P.A hospital to test LIN freezer thermal valves. 
+
+Attempt to contact site contact Donna, advised by coworker no on site this week, liase with Natalie to find nearby parking space and access to freezers. Contact Donna through Natalie to review scope required. 
+
+Remove 3x 50psi (350kpa) rego thermals from in service freezer, and 1x 60psi (414kpa) thermal from back up freezer, and test for correct operation. All valves operated correctly. 
+Make up tags and refit to freezers. 
+
+Thermals that have been tested and tagged are fitted the following freezers;
+CBS1 Freezer- Generant s/n QHG001/7/25 60 psi/414kpa (not in service spare back up freezer)
+CBS2 Freezer- Rego s/n 42107A2400009 50 psi/350kpa (in service freezer)
+CBS3 Freezer- Rego s/n 42107A2400002 50 psi/350kpa (in service freezer)
+CBS4 Freezer- Rego s/n 42107A2400006 50 psi/350kpa (in service freezer)
+Isothermal V500ABEH Freezer- (new freezer, unused) Generant was taken off this freezer and fitted to CBS1 as this freezer is still being site complied. New 414kpa 60 psi generant will need to be supplied for this freezer. 
+
+On the PLC the staff use for filling, the hose is bulging at top when filling dewers, this will need to be replaced asap.  Appears to be 1/2” flared fittings on S/S braided cryo hose. With diffuser at end for filling dewars. 
+
+Have also mentioned so site staff that the flexible hoses on all the plc’s will require testing, none have tagging to suggest this has occured, no id or serial on any of the hoses, all 1/2” flared hoses. 
+"		"Supply 60 psi generant for 5th ‘new’ freezer, to replace thermal fitted on back up freezer CBS1.
+Replacement of hose used to fill dewars asap as current hose has not testing and is bulging at plc end when being used. 
+
+Testing of all flexible hoses being used on plc/freezer units. All 1/2” flared hoses. "	2025-07-23T04:27:51Z	2025-07-23T04:27:51Z		
+Job Report  005167 / Hamish / JB04275 / Other / 8 Jul 2025 / ALA sunshine / Air Liquide	Hamish Watts	Other	"Carried out testing and setting of 3 x G60 regulators
+
+All regulators were set at working pressure of 1500kpa as required from Air Liquide.
+
+All were working as should.
+
+SN - G60-0001
+SN - G60-0002
+SN - G60-0003"			2025-07-23T01:14:14Z	2025-07-23T01:14:15Z		
+Job Report  005166 / Simon whitrod / 04281 / 1 Yearly Inspection Vessel / VIV / At22-67 / 20000L / Ar / Yes / 23 Jul 2025 / Ala / Ala	Watts Group	1 Yearly Inspection Vessel	"Paint handles, check all safteys and trv.
+Found cold spots.
+Check power cable for any faults.
+Basic check of vessel."			2025-07-23T00:55:45Z	2025-07-23T05:59:37Z		
+Job Report  005165 / Wes / Corrective maintenance	Wes Alexander	Corrective maintenance							
+Job Report  005164 / Wes  / Jb004195 / Preventative maintenance / 23 Jul 2025 / Boeing / Boeing	Wes Alexander	Preventative maintenance	"Work order 950581
+Remove bottom fill valve check seat and bonnet seal no cracks sealed reinstall leak tested ok
+Reseal leaking gland nut 
+Work order 943944
+Checked contents and pressure gauge against Telemetry and zero ok
+Checked all valves reseal gland nuts 
+Checked vacuum 70mtorr
+ Checked pressure raise system1040kpa
+Visual inspection nitrogen reg spools on autoclave 
+"			2025-07-23T01:33:49Z	2025-07-23T01:34:05Z		
+Job Report  005163 / Simon whitrod / 04281 / Tanker Service / At 22-67 / 23 Jul 2025 / Ala / Ala	Watts Group	Tanker Service	"Carry out monthly inspection.
+Noticed that braided hose work is freyed and underneath pump has multiple cracks that need to be welded.
+Function test valves and pump.
+Test e stops."		Braided hose needs replacing and pump supports need replacing welding.	2025-07-22T23:58:44Z	2025-07-22T23:58:47Z		
+Job Report  005162 / Damon / 04277 / Other / 23 Jul 2025 / Ala lang lang  / Ala	Damon Cooper	Other	"Asked by adenia to attend lang lang at 6.30am to assist with load of iso pcau 999054-0.
+
+Assisted Tj with load, installed correct fittings to allow load, opened shut off valve.
+
+Driver could take a max 20tonne load, so we filled to the gauges just under 20tonne.
+Weighbridge showed a load of approx 18.6tonnes
+
+Also assisted tj with issue on his tanker where the actuators would not open.
+
+Note this iso has got damage to the base that supports the sample connections, meaning they have to be propped up to use.
+Also there is no tool in the iso to allow opening of shut off valve."			2025-07-22T23:35:37Z	2025-07-22T23:35:39Z		
+Job Report  005159 / Hamish  / JB04276 / Other / 3 Jul 2025 / Workshop / Air Liquide	Hamish Watts	Other	"Carried out pressure tests on 4 x ALA skids for viva purge. 
+
+ALAPS-0001 (RCCU)
+ALAPS-0002 (Gastail)
+ALAPS-0003 (Zone3)
+ALAPS-0004 (Zone3)
+ALAPS-0005 (RCCU)"			2025-07-22T04:31:13Z			
+Job Report  005160 / Simon whitrod / 04056 / Vessel Refurb / PLV / M705-008-ja / 22 Jul 2025 / Pakenham Racecourse  / Ala	Watts Group	Vessel Refurb							
+Job Report  005159 / Hamish  / JB04276 / Other / 3 Jul 2025 / Workshop / Air Liquide	Hamish Watts	Other	"Carried out pressure tests on 4 x ALA skids for viva purge. 
+
+ALAPS-0001 (RCCU)
+ALAPS-0002 (Gastail)
+ALAPS-0003 (Zone3)
+ALAPS-0004 (Zone3)
+ALAPS-0005 (RCCU)"			2025-07-22T04:31:13Z	2025-07-22T05:12:37Z		
+Job Report  005158 / Wes / Jb004271 / Tanker Corrective Maintenance / 606 / 22 Jul 2025 / Coregas  / Coregas	Wes Alexander	Tanker Corrective Maintenance	"Replaced customer supply coupling gasket
+Checked vent handle 
+Tightened gland
+Replaced seals in customer supply bleed valve"			2025-07-22T01:12:43Z	2025-07-22T01:12:44Z		
+Job Report  005157 / Wes / Jb004268 / Iso Unload / DHGU2348103 / Co2 / ? / ? / ? / ? / As per pics / 1920kpa / 22 Jul 2025 / Coregas  / Coregas	Wes Alexander	Iso Unload	"Repaired leaking flange on iso
+Removed opening man liquid valve spring opener to open main valve
+Completed empty iso
+Removed over industrial pump replace damaged belt A96
+Test run 
+Put away spares in cupboard "			2025-07-22T08:08:56Z	2025-07-22T08:10:29Z		
+Job Report  005156 / Simon whitrod  / 04220 / Installation / 22 Jul 2025 / Silks Cranbourne  / Ala	Angus Watts	Installation	"Install plv at silks in Cranbourne, Install change over panel, and fill coupling.
+Pressure test and function test on first fill.
+Set p.b. 16bar"			2025-07-22T01:00:51Z	2025-07-22T21:41:16Z		
+Job Report  005155 / Simon whitrod / 04157 / 5 Yearly Inspection Vessel / VIV / 1200L / N2 / Yes / 21 Jul 2025 / Nissan casting  / Ala	Watts Group	5 Yearly Inspection Vessel	"5 yearly vessel inspection.
+Vapouriser seems to not have a serial number.
+Initially thought p.b. was leaking however it seems to of the wrong valves were shut.
+Handle removed from valve as it could isolate a trv.
+½"" tube ran to the safety valves which is too small."			2025-07-21T03:35:52Z	2025-07-21T03:36:00Z		
+Job Report  005154 / Simon whitrod / 04149 / 5 Yearly Inspection Vessel / VIV / 06850 / 45000L / N2 / Yes / 21 Jul 2025 / Annex holdings / Ala	Angus Watts	5 Yearly Inspection Vessel	"5 yearly service of vessel, change safteys and trvs/ test if passed.
+Change Valve seats and check Vaccuum."			2025-07-22T23:22:27Z	2025-07-22T23:22:29Z		
+Job Report  005153 / Damon  / 04261 / 5 Yearly Inspection Vessel / VIV / 6596 / 7000L / CO2 / Yes / 21 Jul 2025 / Annex holdings / Ala	Damon Cooper	5 Yearly Inspection Vessel	"5 yearly service of co2 vessel at annex holdings.
+
+2 of the safety valves failed retest and had to be replaced.
+Only 3 of the regos were due to be replaced.
+"			2025-07-21T01:10:58Z	2025-07-21T01:10:59Z		
+Job Report  005152 / Hamish watts / JB04262 / Other / 3 Jul 2025 / Altona / Air Liquide	Hamish Watts	Other	"Washed and pressure tested 2 x vapes. 
+Everything passed and was working as should.
+
+
+Vape 1 - 5387-17
+Vape 2 - 5387-18"			2025-07-21T01:06:18Z	2025-07-21T01:38:01Z		
+Job Report  005151 / Hamish Watts / JB04190 / Corrective maintenance / David temming / 21 Jul 2025 / Austin blood bank / Austin/ALA	Hamish Watts	Corrective maintenance	"Arrived on site and found fitting to be rounded. I had to remove the fitting by taking the hose off from the compression fitting. After trying multiple things I could not grab the brass well enough to remove the nut. Replaced the nut with one that was off a hose not being used. 
+
+Possibly return to site when in area next to supply new nut and spigot. 
+
+Customer was back in normal working order and i advised the driver to fill the PLV"		Drop off new spigot and nut when in area next.	2025-07-20T22:59:22Z	2025-07-20T22:59:24Z		
+Job Report  005150 / Justin robinson / Jb04198 / Other / 22 Jul 2025 / Ruby Jo Site / Coregas	Justin Robison	Other	"21/7/25- Source generator and oil/fuel and prep for Ruby Jo trip.
+
+22/7/25- Vacuum maint check on iso ST-90
+Travel to site out at Karumabrilla, touch base with site contact and inform on site, locate iso ST-90 and set up generator and vac pump. 
+
+Dead head vacuum on hose 16.0 mic, open up iso and check vacuum. Iso vacuum at 37.1 mic. 
+Iso @ open 		37.1 mic		0850 hrs
+@ 1 hour		23.6 mic		0950 hrs
+@ 2 hours		16.6 mic		1050 hrs
+@ 3 hours		13.6 mic		1150 hrs
+@ 4 hours		10.1 mic		1250 hrs
+@pack up		9.7. Mic		1305 hrs
+
+CLose up iso and pack down vac pump and generator
+Load trailer and touch base with site contact, info results and leave site. 
+
+
+Also found V2 Fill/withdrawal isolation valve passing (estop actuated valve ball valve)
+Valve details as follows, will require a seal kit to rectify;
+
+2 “ Mack ball valve
+TAG number-	2442049-299
+Serial-			5508WCRFL-050
+
+Inspect second iso ST-79, reported to potentially have damaged doors. Iso in good condition no damage. Talk to Logan Farrel (site maint supervisor) to see if there were any other vessels on site with damaged to be scoped , he was not aware of any iso or vessel onsite with damage."			2025-07-23T03:54:05Z	2025-07-23T03:54:05Z		
+Job Report  005149 / Jono / 4230 / Corrective maintenance / Dave / 11 Jul 2025 / Best Wines / Air Liquide	Angus Watts	Corrective maintenance	"-Investigate fault - unit failing to cycle off.
+-Calibrate CO2 cycle switch and test operation. Setpoint 18-21Bar.
+-Check pump down sequence, and calibrate LP switch.
+-Check HP cut out and condenser fan cycle setting.
+-Refrigerant and oil levels correct.
+-Leak check system.
+-Blow out air cooled condenser coil.
+-Discuss regular system checks and control wiring change, to
+prevent refrigerant flood back on shutdown."			2025-07-20T22:31:41Z	2025-07-20T22:31:45Z		
+Job Report  005148 / Angus  / 4228 / Corrective maintenance / Dave / 18 Jul 2025 / Calabria Family Wines / Air Liquide	Angus Watts	Corrective maintenance	"Air dryer issues onsite at Calabria 
+
+The site was having issues with a air dryer fault 
+
+After a few days of trying to find the fault codes and contact kaeser with not much luck we sourced a few different spare parts and travelled to site to see. 
+
+I drove to site and spoke to Jon he left the site unlocked so that I could work on the air compressor. 
+
+I found there to be no data or wiring diagrams in the unit and had to fault find a different way. 
+
+I removed all of the covers and inspected the unit it was still running but found the condensing fan to not be controlling. 
+
+I removed the cover and tested the power to the fan and found there to be no power but the bearings working well. 
+
+I then drained the pressure in the buffer and ren the compressor back up to allow for the air dryer to turn back on. 
+
+Once this happened I watched the pressure increase and the fan not trigger this then made me look into the pressure switch that controls the fan. I isolated the unit and found the contractor for this by tracing the cables I unisolated the unit and pushed the contractor in which then made the fan spin. 
+
+This then turned me to fault find the control side of the system
+
+I found the 41 & 42 not getting power which led me back to the pressure switch I removed one pressure switch to the line which triggered the same alarm as what has been happening. 
+
+I then removed the other switch which did not trigger an alarm this told me that it was the fan pressure switch. 
+
+I removed the old switch and dummy wired in the new one which then made the fan control. I searched the site and Ute for some small fittings I needed to make the install tidy. 
+
+I removed the cables and cleaned it up a bit for the night and left site. 
+
+I returned to site the next morning after looking for parts locally without any luck. 
+
+Fan is working and controlling correctly. Compressor ran all night without any issues 
+
+Clean up area and put all of the cabinet back together and return to factory. "		Remove fitting and replace with new schrauder valve small elbow. This is not critical but will make it look better.	2025-07-20T21:53:50Z	2025-07-20T21:59:59Z		
+Job Report  005147 / Damon / 04183 / Iso Service / Is 20-24 / 30 Jun 2025 / Wshop / Ala	Hamish Watts	Iso Service	"Iso service 20-24
+
+Replace trvs. Set at 2760kpa. Tested and installed 6-25
+Test main safety valves, test and install 6-25.
+
+Paint valve handles 
+
+Stickers changed"			2025-07-18T04:10:06Z	2025-07-23T04:38:59Z		
+Job Report  005146 / Simon whitrod / 04215 / Other / 14 Jul 2025 / Cryoferm / Ala	Damon Cooper	Other	"Test and set Sampson valves to -10°
+
+Sn# 004190-1, 004190-2, 004190-3"			2025-07-18T04:08:01Z	2025-07-18T04:08:03Z		
+Job Report  005145 / Angus  / 4154 / 1 Yearly Inspection Vessel / Fridge / ALA00112 / 6T / CO2 / Yes / 18 Jul 2025 / Campbells  / Air Liquide	Angus Watts	1 Yearly Inspection Vessel	"Travel to site 
+
+Speak to customer and sign in
+
+Look over the vessel and condensing unit for correct operation 
+
+No issues on this vessel functionally but the vessel does not look like its in good condition 
+
+Condensing unit is working correctly"			2025-07-20T21:30:23Z	2025-07-20T21:31:19Z		
+Job Report  005144 / Damon / 04224 / Installation / 18 Jul 2025 / Positive proteins / Supagas	Damon Cooper	Installation	"Assist supagas finish vessel installation for LOX skid tank.
+
+Installed flange on outlet of vaporiser. 
+Assembled flange on inlet to vaporiser.
+Ran customer line in 3/4"" from vessel to customers existing ball valve.
+Installed relief valve and blow down(supagas supplied).
+Purged and pressure tested line. All good.
+
+All equipment supplied is oxy compatible and clean. Confirmed installation oxy clean.
+
+Supagas to organise vessel fill and commission."			2025-07-18T00:27:27Z	2025-07-18T00:27:29Z		
+Job Report  005143 / Simon whitrod / 04158 / 1 Yearly Inspection Vessel / VIV / 1015 / 5000L  / Ar / Yes / 18 Jul 2025 / G James  / Ala	Watts Group	1 Yearly Inspection Vessel	1 yearly inspection			2025-07-18T00:34:18Z	2025-07-18T00:54:50Z		
+Job Report  005142 / Wes  / Jb004161 / Tanker Service / AT26-70 / 18 Jul 2025 / Ala / Ala	Wes Alexander	Tanker Service	"Completed 3 monthly inspection 
+Tested interlocks 
+Tested emergency stops  pump stops valves closed 
+Leak tested reseal actuator gland nuts 
+Replaced customer supply valve seat 
+
+"	"Tanker safety valves 
+300kpa test date 2/29
+Trv test date 9/29- 1000kpa"	"Pump gland has small vapour leak when running 
+No spring in main customer supply valve"	2025-07-18T00:44:35Z	2025-07-18T00:44:37Z		
+Job Report  005141 / Simon whitrod / 04178 / 1 Yearly Inspection Vessel / VIV / 6845 / 45000L / N2 / Yes / 18 Jul 2025 / Nmps / Ala	Watts Group	1 Yearly Inspection Vessel	1 yearly service.			2025-07-17T22:48:10Z	2025-07-17T23:33:20Z		
+Job Report  005140 / Thomas / 04173 / Installation / 17 Jul 2025 / Bright brewery  / Air liquide	Hamish Watts	Installation	"Removal and decommissioning of the old vessel. To be replaced by the 3 Ton skid tank
+
+Blow vessel down till there is zero product left in tank to then be scrapped. In doing so we took off any valves that are worth keeping. 
+
+Started by setting up the vaporisers in position. Along with the spools pre-made at the workshop.
+
+The old taken was removed and replaced with the new skid tank. Once landed and squared the skid was then tubed up to the 3 vaporisers and pressure tested for any leaks.
+
+Once tank was filled the pressure build regulator was set.
+
+"			2025-07-17T05:43:32Z			
+Job Report  005139 / Simon whitrod / 04201 / Preventative maintenance / 17 Jul 2025 / Coregas / Coregas	Watts Group	Preventative maintenance	"Fix leak on 300bar argon pump,
+Pump outlet nut was leaking so de pressurise and use lox8 to re fit and test function.
+Replace straps on 5 stills.
+Check all pig tails for leaks and fix.
+Problem with the hydrostatic test rig, returned to working capacity.
+Transfer co2 from vessel t519 to vessel t359."			2025-07-17T05:18:06Z	2025-07-17T05:18:28Z		
+Job Report  005138 / Justin robinson / Jb04214 / Corrective maintenance / Justin mitchell / 16 Jul 2025 / Supagas beenleigh / Supagas	Justin Robison	Corrective maintenance	"15/7/25-
+Drop in to site on way past to investigate ice machine broken bolts, major failure of 8x m20 grade 12.9 cyl bolts. Seek hyd repairer for advise on possible causes. 
+
+16/7/25-
+Return to site and assist Justin onsite with repairs to replace bolts and evenly tighten bolts. Before running machine to check operation discuss with justin possible causes for failure. Go over machine to check for any obvious broken bolts, none found. 
+After discussion decided to check machine side 2 parameters for cycle, as it is only on 10mm pelles that its breaking bolts on side 2 only. Found that side 2 10mm pellet parameters had been increased at some point to speed up cycle duration from 20 secs per cycle to around 15-16 secs per cycle. 20-25% increase. Cylce parameters were reset to match side 1 parameters and machine was test run to check side 2 for smooth operation. 
+Operation appears to be smooth. 
+
+Appears that the increase in cycle speed is causing excessive increase of pressure insdie the pressing head causing flexion and distortion of the press main body, causing broken bolts in body frame and also cylinder bolt failure due to excessive kick back pressure. 
+
+Machine will be run and monitiored with new lowered operating parameters sticking to a 20 sec cycle time. 
+If broken bolts issue continues have discussed with Justin option to removing side 2 module to do full teardown and rebuild. "						
+Job Report  005137 / Damon / 04173 / Call out / 16 Jul 2025 / Fuchs / Ala	Damon Cooper	Call out	"Shane called this morning and said that he wasn't able to fill as the flow had shut off. 
+Deduced that it was the over pressure valve that had tripped.
+
+Spoke with Dave, he asked us to head out to site.
+Arrived on site, had to redo my induction. 
+Reset the valve, no issues. 
+Vessel is ready to fill again.
+Vessel 15%"			2025-07-16T02:39:48Z	2025-07-16T02:39:49Z		
+Job Report  005136 / Justin Robinson / Jb04211 / Corrective maintenance / Alex VM / 15 Jul 2025 / Wacol / Ala	Justin Robison	Corrective maintenance	"15/7/25-
+Attend site and un pack and begin sorting compressor body panels, refit vertical supports and refit compressor roof, set up rigging and refit air inlet box and secure, install bottom air box support. 
+Install compressor electrical cabinet doors and reinstall controller, fans, estop and isolator into door. Refit door seals and reinstall door lock mechanisms, adjust locking mechanisms to suit correct door operation, no catching points. 
+Install air end side compressor cabinet doors, adjust door hinges and install door seals, install and adjust door lock mechanisms for correct operation and no catch points. 
+Identify motor/cooler cover panel locating pins have corroded and no longer there. Discussed with alex and will install 25mm angle and install treaded rod as locating pin.  
+
+16/7/25-
+Finish fitting out compressor panelling, install locking mechanisms and adjust for correct operation. 
+
+17/7/25-
+Make up angle support for motor cover panel bottom edge to recreate locating pins, install panel. Fit roof weather protection panel and reinstall cable tray back to original position. 
+Remove minimum pressure valve and replace inner components and seals including sealing plunger, reassemble and reinstall onto machine."						
+Job Report  005135 / Wes / Jb004201 / Corrective maintenance / Ian / 15 Jul 2025 / Coregas  / Coregas	Wes Alexander	Corrective maintenance	"Replaced carbonox oxygen needle valve was hard to open and seal.
+Work on nitrogen ISOs for Darwin assisted Angus
+Removed nitrogen pump pipework return workshop removed damaged fittings machine sleeve , weld , replaced damaged fitting.machine make up blank fitting.
+Hydro tested pipe at intervals of 50-100 bar hold 15 minutes , final test at 400 bar for 15 minutes.
+Purge with nitrogen and heater, reinstall run pump to 100 bar leak test,10 min,run pump to 250 bar stop pump leak test 10 minutes,pressure to 350 bar leak tested under pressure 15 minutes ok
+Reinstate brackets hand over tested 
+Hydro witness and final testing by Kev and Ian "		300 bar pump need brackets replaced				
+Job Report  005134 / Lindsay iluk  / JB04196 / Iso Unload / CMYU0200589 / CO2 / 1850mm / 18.9 bar / 60mm (empty) / 14 bar / 6200mm / 17.1 bar / 14 Jul 2025 / WATERSURE  / WATERSURE	Angus Watts	Iso Unload	"Decant ISO #CMYU0200589 in to onsite vessels stream 2 silo B.
+ISO start at 1850mm and 18.9bar.
+Vessel start at 3500mm and 17.9bar.
+ISO finish at 60mm and 14bar.
+Vessel finish at 6200 and 17.1 bar"			2025-07-14T04:44:25Z	2025-07-14T04:46:51Z		
+Job Report  005133 / Justin Robinson / Jb04197 / Other / 9 Jul 2025 / Wacol / Ala	Justin Robison	Other	"Bodie Heit reported DVSR on iso CYSU2075479 for a leak to be located due to a low pressure event when iso was last filled, iso pressure was down significantly when it arrived to be filled. 
+
+Liaise with Bodie and site delivery drivers and locate CYSU iso and inspect iso thoroughly for any signs of leak in system. All appears to be good on iso, no signs of leak in gas or liquid sides could be located, report findings to Bodie.  "			2025-07-14T02:08:15Z	2025-07-14T02:08:16Z		
+Job Report  005132 / Justin Robinson / Jb04188 / Other / 1 Jul 2025 / Wacol / Ala	Justin Robison	Other	"ALA vessel 6457
+
+Remove perlite in preparation for vessel to be scrapped. 
+Cut multiple hoses in bottom side of vessel to access all areas of vessel, suck out and bag up perlite as per ALA request. "			2025-07-14T01:52:13Z	2025-07-14T01:52:51Z		
+Job Report  005131 / Wes / Jb4199 / Preventative maintenance / 14 Jul 2025 / Spec gases / Ala	Wes Alexander	Preventative maintenance	"Work order459878 reactive manifold inspection 
+Work order458694 oxygen pump inspection belt
+Work order 458696 nitrogen pump inspection 
+Work order458812 vaporiser inspection nitrogen
+Work order 458695 argon pump inspection "		"Reactive manifold flex hoses don’t have dates on the tags
+Johnathon wants oxygen line redirected from running through flamm area (Lindsay)
+Relocation of non electrically safe vac pump outside(spoke to Lindsay)"	2025-07-15T21:21:32Z	2025-07-15T21:21:33Z		
+Job Report  005130 / Wes / Jb004201 / Corrective maintenance / Ian / 14 Jul 2025 / Coregas  / Coregas	Wes Alexander	Corrective maintenance	"Attended site look at leak on 300 bar nitrogen pump outlet.
+Found fitting on outlet pump cracked ,
+Removed down stream pipe showed Ian asked to organise replacement parts from Sydney"		Parts required plus welder	2025-07-14T01:07:21Z	2025-07-14T01:07:22Z		
+Job Report  005129 / Simon whitrod  / 04164 / Tanker Service / Rt07-54 / 14 Jul 2025 / Ala / Ala	Watts Group	Tanker Service	"Undertake 3m service.
+Grease pump and check bearings.
+Test and clean out air system.
+Check emergency stops.
+Eis tags missing from fill couplings.
+Labels missing from switches.
+"		Eis tags need to be replaced.	2025-07-14T01:17:29Z	2025-07-14T01:17:38Z		
+Job Report  005128 / Thomas / 04172 / Installation / 12 Jul 2025 / Baiada laverton / Air Liquide	Hamish Watts	Installation	"Instalation of viv 50000 LIN vessel, ala5963.
+Move existing vessel, ala5989 to new location.
+
+Arrive on site,blow liquid away from existing vessel, disconnect and remove equipment from vessel.
+Supervise cranes moving vessel to new location, pack vessel level.
+Supervise cranes placing new vessel in position, pack vessel level.
+
+Run fill lines from both vessels to common fill point.
+Pressure and liquid test line.
+Supervise fill of existing vessel.
+New vessel to be filled and commissioned at a later date.
+
+Nikkiso worked on the vaccuum line. So we returned the next day after they were done and once the electrician was done, to reconnect the vessel and equipment.
+
+Ran system with customer and everything was working as should when leaving site. "			2025-07-13T03:57:42Z	2025-07-13T03:57:43Z		
+Job Report  005127 / Damon / 04185 / Call out / 11 Jul 2025 / Coregas thomastown  / Coregas	Damon Cooper	Call out	"Called out to site by Chris.
+Reported a leak from the 300bar pump outlet fitting.
+
+I arrived on site, didn't notice a leak per say. But saw unusual ice build up around the fitting, looks like it sealed up.
+
+I depressurised the line and defrosted the system, took apart the fitting and resealed.
+
+Reconnected everything, purged the system and started up the pump. No leaks up to operating pressure.
+Will reasses when on site next week."			2025-07-11T06:18:11Z	2025-07-11T06:18:41Z		
+Job Report  005126 / Wes / Jb004205 / Tanker Service / At33-48 / 11 Jul 2025 / Ala / Ala	Wes Alexander	Tanker Service	"Completed 5 yearly safety and relief valve change .
+Retested safety valves 
+Vent down repair leaking fitting inlet 3 way valve ,
+Replaced leaking brass fitting
+Bring up to pressure leak test"		"Fitting leaking on thread 
+Safety valves Vent down pipe bracket needs rewelding"	2025-07-11T07:06:21Z	2025-07-11T07:06:33Z		
+Job Report  005125 / Justin Robinson / Jb04210 / Corrective maintenance / Beef breeding services / 11 Jul 2025 / Workshop / Beef Breeding Services	Justin Robison	Corrective maintenance	"Carry out vacuum maint on the following dewers. Orings replaced before first draw. 
+
+Small sample dewers.
+
+2678-
+1st draw at atmos. Pulled to 30 mic
+2nd draw at 160 mic. Pulled to 7.7 mic
+3rd draw at 50.1 mic. Pulled to 2.8 mic. Dewer good for serivce.
+
+3602- 
+1st draw at atmos. Pulled to 650 mic. SUspect leak.
+2nd draw at 1600 mic. Pulled to 416 mic
+3rd draw at 710 mic. Would not pull vac below 277 microns. Not serviceable.
+
+3432-
+1st draw at atmos. Pulled to 50 mic.
+2nd draw at 200 mic. Pulled to 16.7 mic.
+3rd draw at 90 mic. Pulled to 8.9 mic. Dewer good for serivce.
+
+2705- 
+1st draw at atmos. Pulled to 50 mic
+2nd draw at 270 mic. Pulled to 14.5 mic.
+3rd draw at 85.7 mic. Pulled to 6.2 mic. Dewer good for service
+
+2676-
+1st draw at atmos. Pulled to 45 mic
+2nd draw at 220 mic. Pulled to 9.8 mic
+3rd draw at 100 mic. Pulled to 5.5 mic. Dewer good for service.
+
+
+Large storage dewers. 
+
+2678-
+1st draw at atmos. Pulled to 32.7 mic
+2nd draw at 130 mic. Pulled to 8.0 mic
+3rd draw at 13 mic. Pulled to 9.2 mic. Dewer good for service.
+
+SC20/20-
+1st draw at atmos. Pulled to 50 mic.
+2nd draw at 170 mic. Pulled to 14.8. Mic
+3rd draw at 20 mic. Pulled to 13.3 mic. Dewer good for service.
+
+3177-
+1st draw at atmos. Pulled to 62.1 mic
+2nd draw at 310 mic. Pulled to 17.8 mic. 
+3rd draw at 25 mic. Pulled to 13.0 mic. Dewer good for service.
+
+3384-
+1st draw at atmos. Pulled to 25.2 mic
+2nd draw at 75 mic. Pulled to 16.8 mic
+3rd draw at29 mic. Pulled to 15.6 mic. Dewer good for service
+
+3053-
+Dewer has leak and can not pull vacuum. Pulls to 250 mic but looses vac to over 1000 mic within 10 secs when plug fitted. Internal leak. Not fit for service. 
+
+Also 1x large dented dewer would not pull vac under 500 mic. No id number on dewer. 
+This dewer is also not fit for service. 
+
+Dewers picked up by driver. 
+"			2025-07-11T03:59:36Z	2025-07-11T03:59:36Z		
+Job Report  005124 / Damon / 04177 / Tanker Corrective Maintenance / At 25-104 / 10 Jul 2025 / Kwinana asu / Ala	Damon Cooper	Tanker Corrective Maintenance	"Called out to the asu by Allen as trailer at 25-104 had a split large hose bellows.
+
+Arrived on site, replaced hose with one allen supplied.
+Pressure and function tested system. All good.
+
+Noted that the rubber bushings on the brackets supporting the flange is deteriorating.
+The one on the back trailer has broken off and is missing.
+They may need to be periodically replaced.
+
+New hose#  is 2234-2-1."		"Replace rubber bushings on hose support brackets.
+"	2025-07-10T09:39:18Z	2025-07-10T09:39:19Z		
+Job Report  005123 / Damon / 04202 / 1 Yearly Inspection Vessel / VIV / Vtc30-125-22 / 30000 L / CO2 / N/A / VIV / Cry199 / 30000 l / N2 / N/A / VIV / Cry 198 / 30000 l / Ar / N/A / VIV / 15t1437 / 20000 / O2 / N/A / 10 Jul 2025 / Supagas perth / Supagas	Damon Cooper	1 Yearly Inspection Vessel	Annual inspection of 4 x vessels at supagas Perth.		"Install correct fill couplings on vessels.
+Install means to prevent fill couplings unscrewing.
+Install hose stands to screws hoses too, or store hoses not attached to vessels.
+Upgrade trvs that are below the vessel safety valve pressures.
+Other incidental works as listed in report."	2025-07-10T12:00:44Z	2025-07-10T12:00:46Z		
+Job Report  005122 / Damon / 04177 / 1 Yearly Inspection Vessel / VIV / Ala1087 / 3000 l / CO2 / Yes / 10 Jul 2025 / Brewmart / Ala	Damon Cooper	1 Yearly Inspection Vessel	"Annual inspection at brewmart.
+
+It looks like the customer has installed insulation. I had to remove some parts to make sure valves could be safely operated.
+
+Trv missing between revert isolations
+
+Pressure build has been isolated, this is not advisable for co2.
+
+Ubolts holding fill couplings are not sufficient and should be upgraded."		"Replace u bolts on fill couplings to stronger ones.
+
+Install rego on revert line"	2025-07-10T05:00:34Z	2025-07-10T05:00:36Z		
+Job Report  005121 / Damon / 04177 / 1 Yearly Inspection Vessel / VIV / Alwa 308 / 6000 l / O2 / Yes / 10 Jul 2025 / Di Candilo steel city / Ala	Damon Cooper	1 Yearly Inspection Vessel	"Asked by shyan to attend site to peform inspection as well as test the msvs.
+
+I also repainted the handles as they were in poor shape.
+
+Trvs were installed 1/22.
+
+There is a minor leak on the threaded inlet to the vaporiser,  i was unable to repair due to the customer being unable to shutdown.
+
+Corrosion on vessel foot due to trycock exhaust, ss plate may be needed to cover"		"Return after hours to repair leak on vaporiser inlet
+
+Install ss cover plate to protect vessel leg from trycock, and repaint leg.
+"	2025-07-10T04:33:57Z	2025-07-10T04:33:58Z		
+Job Report  005120 / Wes / Jb004201 / Corrective maintenance / Ian  / 10 Jul 2025 / Coregas / Coregas	Wes Alexander	Corrective maintenance	"Completed transfer of co2 from storage to production vessel.no iso arrived?
+Replaced leaking 2413 kpa relief on co2?remote fill line 
+Investigate worn oxygen fittings and find replacements need oxy cleaning 
+Repaired 2x argon filling connectors
+Tested
+Source transport adapters to workshop for review "			2025-07-10T08:30:20Z	2025-07-10T08:30:45Z		
+Job Report  005119 / Simon whitrod / 04109 / 1 Yearly Inspection Vessel / VIV / 06493 / 5000L / O2 / Yes / 10 Jul 2025 / Alexandra fish farm / Ala	Watts Group	1 Yearly Inspection Vessel	"Carry out 1 yearly service, check vacuum.
+Check function of valves and overall condition of vessel"			2025-07-09T23:53:17Z	2025-07-09T23:53:21Z		
+Job Report  005118 / Damon / 04177 / 1 Yearly Inspection Vessel / PLV / Plv002  / 240 l / CO2 / Yes / 9 Jul 2025 / Bartholomew's meadary / Ala	Damon Cooper	1 Yearly Inspection Vessel	"Annual inspection of vessel.
+
+Shyan stated site was Bartholomew's meadery, but vessel is located at harewood estate on Scottsdale Rd.
+
+Regos are used as msvs instead of generants, regos aren't sufficient flow. There is no trv on customer lines.
+
+Vessel isn't in great condition, valves are hard to operate. 
+"		"Replace msvs with generants.
+Install missing trvs"	2025-07-09T04:11:01Z	2025-07-15T05:30:13Z		
+Job Report  005117 / Justin robinson / Jb04191 / 5 Yearly Inspection Vessel / VIV / Iso16-04 / Isotainer / CO2 / No / 9 Jul 2025 / Wacol / Ala	Justin Robison	5 Yearly Inspection Vessel	"Carry out 5 yearly inspection 
+Only changed non live valve seat seals  due to restrictive time constraints, tested safety valves, 3x passed at 2400kpa, 1x failed to reseat, and was unable to be reset or adjusted manually, discussed this with bodie, bodie is ordering new replacement and will replace once arrives. Faulty safety valve number 980116077, mack type 7638T, 3/4”
+Tested vacuum, out of range over 999mic. Will need substantial vac down to check for leaks etc. multiple day job. 
+Painted handles as per customer service.
+Replaced shattered level gauge with new unit, checked for leaks, all good at 19 bar "		Replace faulty safety valve upon arrival, vacuum maint required asap, live valves need seals replacing.	2025-07-09T04:15:56Z	2025-07-14T01:43:58Z		
+Job Report  005116 / Damon / 04177 / 1 Yearly Inspection Vessel / VIV / Alwa 267 / 1000 l / CO2 / Yes / 9 Jul 2025 / Forest Hills winery / Ala	Damon Cooper	1 Yearly Inspection Vessel	"Annual inspection at forest Hill winery.
+
+Vessel safeties are 3400kpa and 3 of the trvs were 3100kpa, meaning they could relieve first and vent liquid.
+I swapped those with 4100kpa regos to match the others on the vessel.
+
+No trv downstream of regulator on customer line. 
+
+Pb reg is passing, needs to be rekitted/replaced. Reg is 1/2 cash, data plate illegible.
+
+I would recommend downgrading the msvs on the vessel as they dont need to be that high, especially when they use snow."		"Rekit pressure build reg.
+Look at downgrading msv's."	2025-07-09T03:14:14Z	2025-07-09T03:14:15Z		
+Job Report  005115 / Damon / 04177 / 1 Yearly Inspection Vessel / VIV / Alwa 303 / 1000 l / CO2 / Yes / 9 Jul 2025 / Mt shadforth wines / Ala	Damon Cooper	1 Yearly Inspection Vessel	"Annual inspection of co2 skid tank at Mt shadforth wines.
+
+Replaced dalia due to damage.
+New dalia reading correctly.
+Sn cbib22060100389
+
+No relief valve after regulator on customer line.
+
+Customer informed that the winery is shutting down."			2025-07-09T01:49:19Z	2025-07-09T01:49:28Z		
+Job Report  005114 / Damon / 04177 / 1 Yearly Inspection Vessel / VIV / Ala 1053 / 3000 l / CO2 / Yes / 9 Jul 2025 / Willoughby park / Ala	Damon Cooper	1 Yearly Inspection Vessel	"Asked to attend site to peform inspection, test MSVs and replace regos.
+
+The trvs had only been installed 1/24 so i did not replace these.
+One of the msvs needed to be replaced due to a wasp nest in the valve.
+
+There is no trv between valves on the revert line.
+
+The fill couplings had both become loose and had unscrewed.
+The u bolts are not sturdy enough and should be replaced with better ones as well as potentially loctiting or loxealing the fill coupling threads.
+I have reinstalled the fill couplings and ubolts for now."		"Replace u bolts on fill couplings with sturdier ones.
+
+Install valve at the snow horn. and trv in between.
+
+Install trv between revert valves"	2025-07-09T01:02:03Z	2025-07-15T05:24:38Z		
+Job Report  005113 / Wes / 04145 / Iso Service / EURU 9222349 / 9 Jul 2025 / Cryoferm  / Ala	Watts Group	Iso Service	"Retested safety’s relabel
+Wash vessel.
+Paint handles and change trvs"			2025-07-10T06:07:42Z	2025-07-10T06:07:43Z		
+Job Report  005112 / Damon / 04177 / 1 Yearly Inspection Vessel / VIV / Alwa 266 / 1000 l / CO2 / Yes / 8 Jul 2025 / Matilda estate (rockliffe winery) / Ala	Damon Cooper	1 Yearly Inspection Vessel	"Annual inspection of co2 skid tank.
+
+Trv should be installed after regulator, pipeline immediately goes to a hose line.
+Snow horn ball valve had a leak from the gland. I rectified it. I assume its missing a relief hole in the ball. Valve should be replaced. 1/2""."		"Install relief valve after regulator 
+
+Replace snow horn ball valve"	2025-07-08T07:45:18Z	2025-07-08T07:45:20Z		
+Job Report  005111 / Damon / 04177 / 1 Yearly Inspection Vessel / VIV / Alwa235 / 5000 L / CO2 / Yes / 8 Jul 2025 / West Cape howe wines / Ala	Damon Cooper	1 Yearly Inspection Vessel	"Annual inspection of co2 vessel at west Cape howe wines.
+
+Valve for snow horn is not at the snow horn, increasing likelihood of snow plug.
+Snow horn comes off a flexible line, no longer allowed.
+Snow horn hose overdue for replacement. 
+Carbon steel fittings used.
+
+Nothing securing the co2 fill Fittings to stop them coming undone.
+
+Vaporiser installed askew.
+"		"Remove snow horn flex hose, relocate valve, replace snow horn stand.
+
+Downgraded rego on vaporiser line.
+
+Install support to fill couplings.
+
+Harris reg is probably due for replacement. "	2025-07-08T06:15:14Z	2025-07-08T06:15:15Z		
+Job Report  005110 / Damon / 04177 / 1 Yearly Inspection Vessel / VIV / Je 5224 / 5000 / CO2 / Yes / VIV / 5710 / 3000 / N2 / Yes / 8 Jul 2025 / Ferngrove winery / Ala	Damon Cooper	1 Yearly Inspection Vessel	"Asked by shyan to attend site and peform inspections on co2 and n2 vessels. And to replace the glass on the n2 level gauge, as well as test the msvs for the co2 vessel.
+
+I also tested the n2 vessel safeties as they were almost due for test. One failed which I had to replace.
+
+Installed evidence of plant registration on both vessels.
+
+The co2 snow horn is poorly installed. It is not bracketed, the isolation valve is well before the snow horn, increasing the likelihood of snow plugs. I spoke with the customer and they share the same concerns and mentioned how it frequently plugs up.
+The snowhorn needs to be installed on a stand and the valve moved to the inlet.
+
+Co2 vac reading high.
+
+Neither vessel has a trv after the regulator. "		"The snowhorn needs to be installed on a stand and the valve moved to the inlet.
+
+Vac down co2 vessel.
+
+Install relief valves after the regulators on tbe customer lines."	2025-07-08T04:23:29Z	2025-07-08T04:23:30Z		
+Job Report  005109 / Wes / Jb004185 / Corrective maintenance / Ian / 8 Jul 2025 / Coregas / Coregas	Wes Alexander	Corrective maintenance	"Replaced medical oxygen vent valve spindle 
+Tested strip down review 
+Inspect nitrogen 200 bar pump belts size Spa 2650 retighten belts .
+Checked 300 bar argon pump high pressure purge fitting install plate protect pressured column 
+Repaired damaged type 10 nut argon manifold 
+Checked oxygen filling connections changed damaged connection ,
+Retighten nitrogen pack lead fitting
+Inspected oxygen industrial cylinder filling type 10 fittings found 9 with excessive wear .
+Was supplied old fill adapter purged visually checked installed .replaced orings  
+"		Inspection of all oxygen type 10 connections brsss	2025-07-08T08:04:55Z	2025-07-08T08:04:59Z		
+Job Report  005108 / Damon / 04177 / 1 Yearly Inspection Vessel / PLV / 719-002-r1 / 7 Jul 2025 / Seasonal brewing / Ala	Damon Cooper	1 Yearly Inspection Vessel	"Annual inspection of co2 plv at seasonal brewing co.
+
+There is no trv on customer line before regulator.
+No trv between valves on vent line.
+Main safetys are rego 2400kpa. Unsure if regos are sufficient flow for msvs."		Install missing trvs and swap rego msvs with generant.	2025-07-07T07:38:47Z	2025-07-07T07:38:52Z		
+Job Report  005107 / Damon / 04177 / 1 Yearly Inspection Vessel / VIV / Alwa-209 / N2 / No / 7 Jul 2025 / Freeze right / Ala	Damon Cooper	1 Yearly Inspection Vessel	"Annual inspection at freeze right.
+
+Trvs should be installed where customer connects for liquid take off."			2025-07-07T06:24:26Z	2025-07-07T06:24:27Z		
+Job Report  005106 / Damon / 04177 / DVSR / 2339 / 1ad40 / 7 Jul 2025 / Kwinana / Ala	Damon Cooper	DVSR	"Asked by shyan to attend asu and rectify multiple split hose bellows on b double oxy trailer.
+
+At25-104 and at29-105 both had a split on the small hose bellows. Allan provided two replacement hoses.
+The first replacement i installed on at 25-104 leaked from the hose.(sn#2236-1-3)
+I replaced it again and pressure tested, all good. (New sn 2236-1-2).
+
+I then replaced the hose on trailer at 29-105.
+Pressure tested, no issues. New hose sn 2236-1-1.
+Note the dampener on the  bracket supporting the large hose bellows has broken off and needs to be replaced.
+
+Driver will run liquid through the lines after the tankers have been filled to check."		Replace dampener on hose bellows bracket	2025-07-07T07:02:22Z	2025-07-07T07:02:37Z		
+Job Report  005105 / Simon whitrod / 04145 / Corrective maintenance / 7 Jul 2025 / Ala / Ala	Wes Alexander	Corrective maintenance	"Iso service, test all safteys and change trvs, paint handles change dv reader.
+Change stickers "			2025-07-07T04:41:12Z			
+Job Report  005104 / Wes / Jb004147 / Vessel Refurb / VIV / 7 Jul 2025 / Baiada / Ala	Wes Alexander	Vessel Refurb	"Derime vessel , paint handles , check vac
+Completed refurb document
+Removed burst disc installed 4x1/2 safety’s set at 1000kpa(raf)"						
+Job Report  005103 / Wes / Jb004184 / Preventative maintenance / 7 Jul 2025 / Spec gases  / Spec gases	Wes Alexander	Preventative maintenance	"Remove check valves tested against vac function correctly creates vac from downstream 
+Tested both check valves ok 
+Tested manual valves checked vac readings on instruments all pulling down to -100
+Connected vac box to open vent after being isolated from vent line than shut vent notice if vac keeps getting lower .
+Turn off pump isolate check vac holds over 5 minutes ok "			2025-07-08T03:08:47Z	2025-07-08T03:08:49Z		
+Job Report  005102 / Lindsay iluk / JB04186 / Call out / 4 Jul 2025 / Altona Air Liquide  / Air liquide	Angus Watts	Call out	"Leaking valve stem on fill discharge valve on CO2 tanker.
+Inspect valve stem and tighten gland nut.
+Unable to check due to no driver available.
+"			2025-07-04T04:24:41Z	2025-07-04T04:24:42Z		
+Job Report  005101 / Damon / 04162 / Tanker Service / 3348 / 3 Jul 2025 / Altona asu / Ala	Damon Cooper	Tanker Service	"Tanker service 3348
+1 yearly inspection 
+
+
+Tanker is overdue for 5 yearly service.
+Safeties are 1"" 250kpa mack .
+
+7 x2400kpa rego valves.
+
+The e stops shut the pump down but do not shut down the isolation valves.
+
+Pump suction valve gland is out of adjustment 
+Valve v29 slightly passing.
+
+Minor leak on diverter inlet thread.
+Minor leak on interlock valve.
+Barrel union on safety valve outlets was undone, I have tightened it up."		"5 yearly service to be peformed.
+E stop issue to be looked at.
+"	2025-07-03T05:03:35Z	2025-07-03T06:09:06Z		
+Job Report  005100 / Wes / Jb004182 / Corrective maintenance / Johnathon  / 3 Jul 2025 / Spec gases / Spec gases	Wes Alexander	Corrective maintenance	"Available for work on reactive vac pump lines and system 
+Drive to hylok pickup replacement parts and service kits for check valve Purchased.
+Reconditioned 1/4 check valve and tested.reinstalled on scrubber
+Source replaced valve seats in vent and vac valves on panel.
+Drain pump fill with small amount fomblin and drain until clean (bobhappy)
+Run pump drain refill 
+Clean dry reinstall pressure transmitter"		As per spec gases requirements	2025-07-03T09:55:45Z	2025-07-03T09:55:46Z		
+Job Report  005099 / Simon whitrod / 04181 / Corrective maintenance / 3 Jul 2025 / Coregas  / Coregas	Watts Group	Corrective maintenance	"Tanker 606 reported multiple leaks from both flanges on fill and outlet.
+Leak from flow meter.
+New gaskets put in place of old ones and nuts on flow meter tightened.
+Seals on fill couplings also were worn so they were changed."			2025-07-03T02:59:16Z	2025-07-03T02:59:47Z		
+Job Report  005098 / Damon / 04142 / Iso Service / Is 20-27 / 3 Jul 2025 / Wshop / Air liquide	Damon Cooper	Iso Service	"Iso service 20-27
+
+Replace trvs. Set at 2760kpa. Tested and installed 6-25
+Test main safety valves, test and install 7-25.
+
+Paint valve handles 
+
+Stickers changed"			2025-07-07T04:09:30Z	2025-07-07T04:09:32Z		
+Job Report  005097 / Simon whitrod  / 04103 / Vessel Refurb / PLV / M440-019-cb / 2 Jul 2025 / Cranbourne Racecourse  / Ala	Watts Group	Vessel Refurb	"Clean vessel.
+Remove stickers.
+Change all handles valves.
+Replace diverter.
+Replace safteys.
+New gauge."		Vessel needs to be pressure tested and stickers to be put on.	2025-07-02T21:56:28Z	2025-07-02T21:56:38Z		
+Job Report  005096 / Wes / Jb004150 / 5 Yearly Inspection Vessel / VIV / 06318 / Viv2500 / O2 / Yes / 2 Jul 2025 / Barwon water  / Ala	Wes Alexander	5 Yearly Inspection Vessel	"Completed 5 yearly inspection and service
+Replaced tank relief valves , tested safety’s and replaced.
+Paint handles, leak tested"		150lb fittings used	2025-07-04T03:45:39Z	2025-07-04T03:45:40Z		
+Job Report  005095 / Wes / Jb004156 / 1 Yearly Inspection Vessel / VIV / Ala5981 / Viv 50000 / N2 / Yes / 2 Jul 2025 / Deakin uni waurn ponds  / Ala	Wes Alexander	1 Yearly Inspection Vessel	"Completed 12monthly inspection 
+Check vac same as line year
+Deice outlet ( David authorised)
+Vent down as safety slightly hissing switch over 
+"		Actuator air valve leaking gasket	2025-07-02T01:57:04Z	2025-07-02T02:04:39Z		
+Job Report  005094 / Damon / 04101 / Other / 2 Jul 2025 / Wshop / Ala	Damon Cooper	Other	"Fill stand prep for Pakenham racecourse
+"			2025-07-01T23:29:21Z	2025-07-01T23:29:22Z		
+Job Report  005093 / Wes / Jb004155 / 1 Yearly Inspection Vessel / PLV / Ala2464 / 245litres / CO2 / Yes / PLV / Ala2455 / 245kilos / CO2 / Yes / 2 Jul 2025 / CSIRO animal  / Ala	Wes Alexander	1 Yearly Inspection Vessel	"Completed 2x12monthly inspection 
+Replaced battery in c stick 2455"		"Needs bracket temporary cable tie installed 
+No trv downstream of regulator"	2025-07-01T23:46:59Z	2025-07-02T00:54:31Z		
+Job Report  005092 / Simon whitrod / 04103 / Vessel Refurb / PLV / M440-014-ha / 2 Jul 2025 / Cranbourne race course  / Ala	Watts Group	Vessel Refurb	"Clean vessel remove stickers.
+Replace all handles valves.
+New diverter.
+New gauge.
+New saftey valves.
+New customer stick.
+New p.b.
+"		"Needs to be pressure tested.
+Stickers placed on.
+"	2025-07-01T23:01:00Z	2025-07-01T23:01:02Z		
+Job Report  005091 / Damon / 04175 / Other / 2 Jul 2025 / Wshop / Ala	Angus Watts	Other	"Standard spool prep for bright brewery.
+"			2025-07-01T22:43:56Z	2025-07-23T06:29:46Z		
+Job Report  005090 / Simon whitrod / 04167 / Coregas Weekly Works / None  / 1 Jul 2025 / Coregas / Coregas	Watts Group	Coregas Weekly Works	Transfer co2 from storage vessel to usage vessel, change out presreg hand valve on oxy filling manifold, leak test pig tails.			2025-07-01T09:17:55Z	2025-07-01T09:17:57Z		
+Job Report  005089 / Simon whitrod / 04181 / Corrective maintenance / Juan Carlos herrera / 1 Jul 2025 / Coregas / Coregas	Watts Group	Corrective maintenance	"Main vent Vale appeared to be leaking when closed, Driver noted.
+New meca inox seals replaced and tested for leaks.
+Returned to working pressure with no passing."			2025-07-01T07:07:16Z	2025-07-01T07:07:28Z		
+Job Report  005088	Wes Alexander								
+Job Report  005087 / Simon whitrod / 04167 / Iso Unload / Cmyu0200470 / Co2 / 2200mmh20 / 1600kpa / 0 / 1900kpa / 8900mmh20 / 1900kpa / 1 Jul 2025 / Coregas / Coregas	Watts Group	Iso Unload	"Transfer co2 from iso to vessel t519.
+Iso gauge was out of calibration as i zeroed the gauges and was still saying 50mmh20 and pump had ran dry"			2025-07-01T04:14:32Z	2025-07-01T04:14:35Z		
+Job Report  005086 / Wes / Jb004138 / Iso Unload / ALGU095035 / argon  / Empty  / 17bar / N/a / N/a / N/a / N/a / 1 Jul 2025 / Ala / Ala	Wes Alexander	Iso Unload	"Attended site to replace fill flanges if required iso filling connections ok 
+Checked analyser point ok
+Monitor start of fill than left 
+Ok"			2025-07-01T21:20:48Z	2025-07-01T21:21:48Z		
+Job Report  005084 / Hamish / JB04028 / Call out / 22 May 2025 / Baiada / Baiada	Hamish Watts	Call out	"Carried out repair on regulator. Tested mix and found faulty mixer. Mixer looks to have blown diaphragm. Shut off 1 x mixer and left 2 supplying as normal. 
+
+Tested mix and found mix to be normal. 
+
+Advised customer that mixer needs to be replaced. 
+
+"		Listed above	2025-06-30T11:09:20Z	2025-06-30T11:09:24Z		
+Job Report  005083 / Lindsay Iluk / JB04108 / Installation / 30 Jun 2025 / Boronia hotel / Airliquide	Hamish Watts	Installation	"Remove Plv from current location, and relocate outside in a cage with ventilation. During the process 1/2” copper was ran from existing lines onto the roof. Once on the roof the copper was bracketed and secured across and around the building. Then ran down the wall into the cage where the PLV was relocated too. A fill coupling was also fitted to PLV along with safety regos.
+"			2025-06-30T05:32:58Z	2025-06-30T05:32:58Z		
+Job Report  005082 / Wes / Jb004166 / Safety Valve Testing / 30 Jun 2025 / Ala / Ala	Damon Cooper	Safety Valve Testing	"Connect pump had issues getting vac pump lower when dead head checked Saunders valve .
+Tested existing ISOs safety’s and replaced due to leaking early and no reseating 
+Replaced reset and tested replacement safety’s .
+Replaced 2x11/2 Saunders valves on vac system after letting back vacuum 
+Replaced tank trv x 6
+Replaced secondary valve seats
+"						
+Job Report  005081 / Damon / 04169 / Other / 30 Jun 2025 / Wshop / Ala	Damon Cooper	Other	"Hilton helium manifold prep.
+Installed 1000kpa rego sn#44205e2400008 Ala supplied
+Tested manifold relief valve, set 2700kpa sn#005081-1
+
+Initially was supplied with incorrect fittings, Claude then supplied correct fittings"			2025-07-01T21:03:03Z	2025-07-01T21:03:05Z		
+Job Report  005080 / Wes / Jb004174 / Safety Valve Testing / 30 Jun 2025 / Ala sunshine  / Ala	Damon Cooper	Safety Valve Testing	"Reset 2 x26 bar to 24 bar tested
+Retested 2x24bar safety’s
+Retag trv with new tags 
+Removed reg spool
+Fitted unistrut to safety valve outlets.
+Fixed fill couplings with new bracket to prevent spinning."			2025-07-01T06:58:39Z	2025-07-01T06:58:46Z		
+Job Report  005079 / Simon whitrod  / 03884 / Vessel Refurb / PLV / 440-083-L4 / 30 Jun 2025 / Cryoferm / Ala	Watts Group	Vessel Refurb	"Clean plv remove all stickers.
+Replace all valves with new rego hand valves.
+New diverter.
+New safteys.
+New c stick level.
+New pressure gauge.
+"		Purge, pressure test and stickers to be put on.	2025-07-01T22:27:39Z	2025-07-01T22:34:11Z		
+Job Report  004016 / Angus Watts / 3914 / Preventative maintenance / 29 May 2025 / Tahbilk Wines / Air Liquide	Angus Watts	Preventative maintenance	"Travel to site to complete vessel refrigeration works 
+
+Cleaned and washed are to try get rid of all the leafs. Test ran unit and the tested all of the running conditions 
+
+Vessel is in okay working order needs to be washed with a broom 
+
+The snow horn needs to be hard plumbed as the hose is kinked 
+
+Customer pipework needs to be looked at downstream it doesnt look like it would be at ALA standard"		Snow Horn to be hard piped	2024-11-14T21:59:53Z	2025-06-30T11:22:50Z		
