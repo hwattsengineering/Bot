@@ -24,33 +24,30 @@ for path in csv_paths:
 all_df = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
 
 # ——————————————————————————————
-# 2) Normalize & map columns
+# 2) Ensure & normalize columns in one go
 # ——————————————————————————————
-all_df.rename(columns={
-    "report_id":                                   "id",
-    "equipment_id":                                "equipment",
-    "inspection_date":                             "date",
-    "fault_description":                           "issue",
-    "Description of works carried out":            "fix",
-    "Fix_Solution":                                "fix",
-    "Fix_solution":                                "fix",
-    "FST Report_Completion _Sign Off Service Tech:":"technician",
-    "Prepared by":                                 "technician",
-}, inplace=True)
-
-# Reindex once to avoid fragmentation, fill missing with empty strings, cast all to str
-desired_cols = ["id","equipment","date","issue","fix","technician"]
+desired_cols = [
+    "id",
+    "date",
+    "equipment_code",
+    "equipment_name",
+    "issue",
+    "solution",
+    "technician",
+    "tags"
+]
 all_df = all_df.reindex(columns=desired_cols).fillna("").astype(str)
 
-# Drop any records without an ID
+# Drop any records without an ID or date
 all_df = all_df[all_df["id"].str.strip() != ""]
+all_df = all_df[all_df["date"].str.strip() != ""]
 
 # ——————————————————————————————
 # 3) Prepare ChromaDB & OpenAI
 # ——————————————————————————————
-client     = chromadb.Client()  
-collection = client.get_or_create_collection("service_reports")
-openai_api = OpenAI()  # reads OPENAI_API_KEY env var
+client     = chromadb.Client()
+collection = client.get_or_create_collection("service_records")
+openai_api = OpenAI()  # reads OPENAI_API_KEY from env
 
 # ——————————————————————————————
 # 4) Lazy indexing setup
@@ -66,7 +63,8 @@ def ensure_index():
         if _indexed_flag:
             return
         for _, row in all_df.iterrows():
-            text = f"{row['issue']} {row['fix']}"
+            # combine issue, solution, and tags into embedding text
+            text = f"Issue: {row['issue']} Solution: {row['solution']} Tags: {row['tags']}"
             resp = openai_api.embeddings.create(
                 input=text,
                 model="text-embedding-3-small"
@@ -76,12 +74,14 @@ def ensure_index():
                 ids=[row["id"]],
                 embeddings=[emb],
                 metadatas=[{
-                    "id":         row["id"],
-                    "equipment":  row["equipment"],
-                    "date":       row["date"],
-                    "issue":      row["issue"],
-                    "fix":        row["fix"],
-                    "technician": row["technician"],
+                    "id":              row["id"],
+                    "date":            row["date"],
+                    "equipment_code":  row["equipment_code"],
+                    "equipment_name":  row["equipment_name"],
+                    "issue":           row["issue"],
+                    "solution":        row["solution"],
+                    "technician":      row["technician"],
+                    "tags":            row["tags"],
                 }],
                 documents=[text]
             )
@@ -113,7 +113,7 @@ def handle_last_job_query(question: str):
     return (
         f"{name}'s last job (Report {last['id']} on {last['date']}):\n"
         f"Issue: {last['issue']}\n"
-        f"Fix: {last['fix']}"
+        f"Solution: {last['solution']}"
     )
 
 def generate_prompt(question: str, top_k: int = 5) -> str:
@@ -130,16 +130,16 @@ def generate_prompt(question: str, top_k: int = 5) -> str:
     hits = results["metadatas"][0]
 
     prompt = (
-        "You are a CryoFERM AI assistant. You have access to these service records.\n"
+        "You are a CryoFERM AI assistant. Use these service records to answer.\n"
         "ONLY answer based on these records. Do NOT invent any details.\n"
-        "If the answer isn’t in the records above, say so and ask if it’s OK to search externally.\n\n"
+        "If the answer isn’t here, say so and ask if it’s OK to search externally.\n\n"
     )
     for rpt in hits:
         prompt += (
-            f"- Report {rpt['id']} | Equipment: {rpt['equipment']} | Date: {rpt['date']} |"
+            f"- ID: {rpt['id']} | Date: {rpt['date']} | {rpt['equipment_code']} {rpt['equipment_name']} |"
             f" Technician: {rpt['technician']}\n"
             f"  Issue: {rpt['issue']}\n"
-            f"  Fix: {rpt['fix']}\n\n"
+            f"  Solution: {rpt['solution']}\n\n"
         )
     prompt += f"Technician question: {question}\nAnswer:"
     return prompt
