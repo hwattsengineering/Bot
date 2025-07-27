@@ -3,55 +3,61 @@ import glob
 import threading
 import datetime
 import csv
+import logging
 
 import pandas as pd
 import chromadb
 from openai import OpenAI
-from flask import Flask, request
+from flask import Flask, request, jsonify
 from twilio.twiml.messaging_response import MessagingResponse
 
 # ——————————————————————————————
-# 1) Load & concatenate all CSVs under data/
+# 0) Setup logging
+# ——————————————————————————————
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("cryobot")
+
+# ——————————————————————————————
+# 1) Load & concatenate CSVs
 # ——————————————————————————————
 BASE     = os.path.dirname(__file__)
 DATA_DIR = os.path.join(BASE, "data")
-csv_paths= glob.glob(os.path.join(DATA_DIR, "*.csv"))
+csvs     = glob.glob(os.path.join(DATA_DIR, "*.csv"))
 
 dfs = []
-for path in csv_paths:
+for path in csvs:
     try:
         dfs.append(pd.read_csv(path, dtype=str))
     except Exception as e:
-        print(f"⚠️ Warning, couldn’t read {path}: {e}")
-
+        logger.warning(f"Couldn’t read {path}: {e}")
 all_df = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
 
 # ——————————————————————————————
-# 2) Normalize columns to our schema
+# 2) Normalize columns
 # ——————————————————————————————
 all_df.rename(columns={
-    "report_id":         "id",
-    "equipment_id":      "equipment",
-    "inspection_date":   "date",
-    "fault_description": "issue",
-    "corrective_action": "fix",
-    "author":            "technician",
-    "Prepared by":       "technician",
+    "report_id":        "id",
+    "equipment_id":     "equipment",
+    "inspection_date":  "date",
+    "fault_description":"issue",
+    "corrective_action":"fix",
+    "author":           "technician",
+    "Prepared by":      "technician",
 }, inplace=True)
 
-wanted = ["id", "equipment", "date", "issue", "fix", "technician"]
-all_df = all_df.reindex(columns=wanted).fillna("").astype(str)
-all_df = all_df[all_df["id"].str.strip() != ""]
+wanted = ["id","equipment","date","issue","fix","technician"]
+all_df   = all_df.reindex(columns=wanted).fillna("").astype(str)
+all_df   = all_df[all_df["id"].str.strip() != ""]
 
 # ——————————————————————————————
-# 3) Set up ChromaDB & OpenAI client
+# 3) ChromaDB & OpenAI
 # ——————————————————————————————
 client     = chromadb.Client()
 collection = client.get_or_create_collection("service_reports")
-openai_api = OpenAI()        # relies on OPENAI_API_KEY
+openai_api = OpenAI()
 
 # ——————————————————————————————
-# 4) Index all records once (thread‑safe)
+# 4) Lazy indexing
 # ——————————————————————————————
 _index_lock   = threading.Lock()
 _indexed_flag = False
@@ -63,32 +69,28 @@ def ensure_indexed():
     with _index_lock:
         if _indexed_flag:
             return
-
+        logger.info("🔍 Indexing records…")
         for _, row in all_df.iterrows():
             text = f"{row['issue']} {row['fix']}"
             emb  = openai_api.embeddings.create(
-                input=text,
-                model="text-embedding-3-small"
+                input=text, model="text-embedding-3-small"
             ).data[0].embedding
-
             collection.add(
                 ids=[row["id"]],
                 embeddings=[emb],
                 metadatas=[row.to_dict()],
                 documents=[text]
             )
-
         _indexed_flag = True
-        print("✅ Indexed all service records")
+        logger.info("✅ Indexed all service records")
 
 # ——————————————————————————————
 # 5) Learning machinery
 # ——————————————————————————————
 LEARNED_CSV     = os.path.join(DATA_DIR, "learned.csv")
-_pending_learns = {}   # phone_number → original_question
+_pending_learns = {}
 
-def learn_record(original_q: str, provided_a: str):
-    """Append Q&A to learned.csv and index immediately."""
+def learn_record(orig_q: str, answer: str):
     ts     = int(datetime.datetime.now().timestamp())
     new_id = f"LEARNED-{ts}"
     today  = datetime.date.today().isoformat()
@@ -96,35 +98,30 @@ def learn_record(original_q: str, provided_a: str):
         "id":         new_id,
         "equipment":  "",
         "date":       today,
-        "issue":      original_q,
-        "fix":        provided_a,
+        "issue":      orig_q,
+        "fix":        answer,
         "technician": "",
     }
-
-    # append to CSV
     exists = os.path.isfile(LEARNED_CSV)
     with open(LEARNED_CSV, "a", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=row.keys())
         if not exists:
             writer.writeheader()
         writer.writerow(row)
-
-    # immediately index it
     text = f"{row['issue']} {row['fix']}"
     emb  = openai_api.embeddings.create(
-        input=text,
-        model="text-embedding-3-small"
+        input=text, model="text-embedding-3-small"
     ).data[0].embedding
-
     collection.add(
         ids=[row["id"]],
         embeddings=[emb],
         metadatas=[row],
         documents=[text]
     )
+    logger.info(f"📝 Learned new record {new_id}")
 
 # ——————————————————————————————
-# 6) Helper: last‑job lookup by technician name
+# 6) Last‐job helper
 # ——————————————————————————————
 def find_last_job(name: str):
     df = all_df[all_df["technician"].str.contains(name, case=False, na=False)]
@@ -132,39 +129,24 @@ def find_last_job(name: str):
         return None
     df2  = df.assign(_dt=pd.to_datetime(df["date"], errors="coerce"))
     last = df2.sort_values("_dt", ascending=False).iloc[0]
-    return (
-        f"{name}'s last job (Report {last['id']} on {last['date']}):\n"
-        f"Issue: {last['issue']}\n"
-        f"Fix:   {last['fix']}"
-    )
+    return f"{name}'s last job (Report {last['id']} on {last['date']}):\nIssue: {last['issue']}\nFix: {last['fix']}"
 
 # ——————————————————————————————
-# 7) Build a GPT prompt from top‑k similar records
+# 7) Build prompt
 # ——————————————————————————————
-def create_prompt(question: str, k=5):
-    qemb = openai_api.embeddings.create(
-        input=question,
-        model="text-embedding-3-small"
-    ).data[0].embedding
+def create_prompt(q: str, k=5):
+    qemb    = openai_api.embeddings.create(input=q, model="text-embedding-3-small").data[0].embedding
     results = collection.query(query_embeddings=[qemb], n_results=k)
     hits    = results["metadatas"][0]
-
-    prompt = (
-        "You are a CryoFERM AI assistant. You ONLY answer from the records below. "
-        "If none applies, you will ask to learn.\n\n"
-    )
-    for rpt in hits:
-        prompt += (
-            f"- Report {rpt['id']} | Equip: {rpt['equipment']} | Date: {rpt['date']} | Tech: {rpt['technician']}\n"
-            f"  Issue: {rpt['issue']}\n"
-            f"  Fix:   {rpt['fix']}\n\n"
-        )
-
-    prompt += f"Tech question: {question}\nAnswer:"
+    logger.info(f"👀 Hits: {[h['id'] for h in hits]}")
+    prompt  = "You are a bot. Only use these records. If none apply, ask to learn.\n\n"
+    for r in hits:
+        prompt += f"- {r['id']} | {r['equipment']} | {r['date']}\n  Issue: {r['issue']}\n  Fix: {r['fix']}\n\n"
+    prompt += f"Question: {q}\nAnswer:"
     return prompt
 
 # ——————————————————————————————
-# 8) Flask + Twilio integration
+# 8) Flask routes
 # ——————————————————————————————
 app = Flask(__name__)
 
@@ -172,46 +154,55 @@ app = Flask(__name__)
 def health():
     return "OK", 200
 
+@app.route("/debug/hits", methods=["GET"])
+def debug_hits():
+    # show last query hits (if any)
+    return jsonify(last_hits=[h['id'] for h in collection.peek().metadatas]), 200
+
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_bot():
     ensure_indexed()
 
     frm = request.values.get("From")
-    txt = request.values.get("Body", "").strip() or ""
-    resp= MessagingResponse()
+    txt = (request.values.get("Body") or "").strip()
+    logger.info(f"❓ Received from {frm!r}: {txt!r}")
 
-    # — Phase 2 of learning: user just sent the answer
+    tw = MessagingResponse()
+
+    # 1) Phase 2 learning?
     if frm in _pending_learns:
         orig = _pending_learns.pop(frm)
         learn_record(orig, txt)
-        resp.message("Thanks! I’ve learned that and will remember it.")
-        return str(resp)
+        tw.message("Thanks! I’ve learned that and will remember it.")
+        return str(tw)
 
-    # — Special: “what did X do on their last job?”
+    # 2) Last‐job?
     import re
     m = re.search(r"what did (\w+) do on (?:his|her|their) last job", txt, re.IGNORECASE)
     if m:
-        answer = find_last_job(m.group(1))
-        resp.message(answer or "I couldn’t find that technician in the records.")
-        return str(resp)
+        ans = find_last_job(m.group(1)) or "I couldn’t find that technician."
+        tw.message(ans)
+        return str(tw)
 
-    # — Standard: similarity search + ChatCompletion
+    # 3) Retrieval + Chat
     prompt = create_prompt(txt)
-    chat   = openai_api.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role":"user","content":prompt}],
-        temperature=0.2,
-    )
-    answer = chat.choices[0].message.content.strip()
+    try:
+        chat = openai_api.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role":"user","content":prompt}],
+            temperature=0.2,
+        )
+        answer = chat.choices[0].message.content.strip()
+    except Exception as e:
+        answer = f"Error: {e}"
 
-    # — If our answer invited learning, queue phase 2
+    # 4) Queue learn if asked
     if "Would you like me to learn" in answer:
         _pending_learns[frm] = txt
 
-    resp.message(answer)
-    return str(resp)
+    tw.message(answer)
+    return str(tw)
 
 if __name__ == "__main__":
-    # Bind to 0.0.0.0 and the `$PORT` env var (for Render/Railway/etc.)
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
