@@ -24,17 +24,24 @@ for path in csv_paths:
 all_df = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
 
 # ——————————————————————————————
-# 2) Normalize & map columns (including author→technician)
+# 2) Normalize & map columns
 # ——————————————————————————————
 all_df.rename(columns={
-    "report_id":         "id",
-    "equipment_id":      "equipment",
-    "inspection_date":   "date",
-    "fault_description": "issue",
-    "corrective_action": "fix",
-    "author":            "technician",
-    "Prepared by":       "technician",
+    "report_id":                                    "id",
+    "equipment_id":                                 "equipment",
+    "inspection_date":                              "date",
+    "fault_description":                            "issue",
+
+    # Map any of these CSV headers into our fix field:
+    "Description of works carried out":             "fix",
+    "Fix_Solution":                                 "fix",
+    "Fix_solution":                                 "fix",
+
+    # Map your sign‑off tech fields into technician:
+    "FST Report_Completion _Sign Off Service Tech:": "technician",
+    "Prepared by":                                  "technician",
 }, inplace=True)
+
 
 for col in ("id","equipment","date","issue","fix","technician"):
     if col in all_df.columns:
