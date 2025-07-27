@@ -40,11 +40,9 @@ all_df.rename(columns={
     "Prepared by":       "technician",
 }, inplace=True)
 
-for col in ("id","equipment","date","issue","fix","technician"):
-    if col in all_df.columns:
-        all_df[col] = all_df[col].fillna("").astype(str)
-    else:
-        all_df[col] = ""
+# ↓ Vectorized reindex + fill to avoid fragmentation ↓
+wanted = ["id", "equipment", "date", "issue", "fix", "technician"]
+all_df = all_df.reindex(columns=wanted).fillna("").astype(str)
 
 # Drop any records without an ID
 all_df = all_df[all_df["id"].str.strip() != ""]
@@ -52,9 +50,9 @@ all_df = all_df[all_df["id"].str.strip() != ""]
 # ——————————————————————————————
 # 3) Prepare ChromaDB & OpenAI
 # ——————————————————————————————
-client     = chromadb.Client()  
+client     = chromadb.Client()
 collection = client.get_or_create_collection("service_reports")
-openai_api = OpenAI()            # reads OPENAI_API_KEY
+openai_api = OpenAI()  # reads OPENAI_API_KEY
 
 # ——————————————————————————————
 # 4) Lazy indexing setup
@@ -63,7 +61,6 @@ _index_lock   = threading.Lock()
 _indexed_flag = False
 
 def ensure_index():
-    """Embed & index all records on first use."""
     global _indexed_flag
     if _indexed_flag:
         return
@@ -100,7 +97,6 @@ LEARNED_CSV     = os.path.join(DATA_DIR, "learned.csv")
 _pending_learns = {}  # maps sender → original question
 
 def learn_record(question: str, answer: str):
-    """Append a Q&A to learned.csv and index it immediately."""
     new_id = f"LEARNED-{int(time.time())}"
     today  = datetime.date.today().isoformat()
     row = {
@@ -111,14 +107,12 @@ def learn_record(question: str, answer: str):
         "fix":        answer,
         "technician": "",
     }
-    # Write to learned.csv
     exists = os.path.isfile(LEARNED_CSV)
     with open(LEARNED_CSV, "a", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=row.keys())
         if not exists:
             writer.writeheader()
         writer.writerow(row)
-    # Index it
     text = f"{row['issue']} {row['fix']}"
     resp = openai_api.embeddings.create(input=text, model="text-embedding-3-small")
     emb  = resp.data[0].embedding
@@ -134,17 +128,13 @@ def learn_record(question: str, answer: str):
 # ——————————————————————————————
 app = Flask(__name__)
 
-# Health‑check
 @app.route("/", methods=["GET"])
 def health_check():
     return "OK", 200
 
 def handle_last_job_query(question: str):
-    """Return direct answer for 'last job' questions, or None."""
-    m = re.search(
-        r"what did (\w+) do on (?:his|her|their) last job",
-        question, re.IGNORECASE
-    )
+    m = re.search(r"what did (\w+) do on (?:his|her|their) last job",
+                  question, re.IGNORECASE)
     if not m:
         return None
     name = m.group(1)
@@ -153,14 +143,10 @@ def handle_last_job_query(question: str):
         return f"Sorry, I don’t see any jobs by {name} in our records."
     df   = df.assign(_dt=pd.to_datetime(df["date"], errors="coerce"))
     last = df.sort_values("_dt", ascending=False).iloc[0]
-    return (
-        f"{name}'s last job (Report {last['id']} on {last['date']}):\n"
-        f"Issue: {last['issue']}\n"
-        f"Fix: {last['fix']}"
-    )
+    return (f"{name}'s last job (Report {last['id']} on {last['date']}):\n"
+            f"Issue: {last['issue']}\nFix: {last['fix']}")
 
 def generate_prompt(question: str, top_k: int = 5) -> str:
-    """Build a strict retrieval prompt from top_k records."""
     resp  = openai_api.embeddings.create(
         input=question, model="text-embedding-3-small"
     )
@@ -186,37 +172,30 @@ def generate_prompt(question: str, top_k: int = 5) -> str:
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_bot():
     ensure_index()
-
     sender   = request.values.get("From")
     incoming = request.values.get("Body", "").strip()
     if not incoming:
         return "OK"
 
-    # A) If waiting to learn, store the answer
     if sender in _pending_learns:
         orig_q = _pending_learns.pop(sender)
         learn_record(orig_q, incoming)
         reply = "Thanks! I’ve learned that and will remember it going forward."
     else:
-        # B) Last‐job shortcut
         direct = handle_last_job_query(incoming)
         if direct:
             reply = direct
         else:
-            # C) Retrieval + LLM
             prompt = generate_prompt(incoming, top_k=5)
             chat   = openai_api.chat.completions.create(
                 model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": prompt}],
+                messages=[{"role":"user","content":prompt}],
                 temperature=0.3
             )
             answer = chat.choices[0].message.content.strip()
-            # D) If it admits no info, ask to learn
             if "I don’t have" in answer or "don't have" in answer:
-                reply = (
-                    "I’m missing that in my records. Could you tell me the correct answer? "
-                    "Just reply with the details."
-                )
+                reply = ("I’m missing that in my records. Could you tell me the correct answer? "
+                         "Just reply with the details.")
                 _pending_learns[sender] = incoming
             else:
                 reply = answer
