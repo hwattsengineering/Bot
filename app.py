@@ -1,208 +1,118 @@
-import os
-import glob
-import threading
-import datetime
-import csv
-import logging
-
-import pandas as pd
-import chromadb
-from openai import OpenAI
-from flask import Flask, request, jsonify
+# app.py
+from flask import Flask, request, abort
 from twilio.twiml.messaging_response import MessagingResponse
+import csv, os
 
-# ——————————————————————————————
-# 0) Setup logging
-# ——————————————————————————————
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("cryobot")
+# —————————————————————————————————————————————
+# 1) DATA LOADING
+# —————————————————————————————————————————————
+DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+REPORT_CSV   = os.path.join(DATA_DIR, "inspections.csv")
+LEARNED_CSV  = os.path.join(DATA_DIR, "Learned.csv")
 
-# ——————————————————————————————
-# 1) Load & concatenate CSVs
-# ——————————————————————————————
-BASE     = os.path.dirname(__file__)
-DATA_DIR = os.path.join(BASE, "data")
-csvs     = glob.glob(os.path.join(DATA_DIR, "*.csv"))
+def load_csv(path, fieldnames):
+    """Load a CSV file into a list of dicts."""
+    if not os.path.exists(path):
+        return []
+    with open(path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f, fieldnames=fieldnames)
+        return list(reader)
 
-dfs = []
-for path in csvs:
-    try:
-        dfs.append(pd.read_csv(path, dtype=str))
-    except Exception as e:
-        logger.warning(f"Couldn’t read {path}: {e}")
-all_df = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
+# define your service‑report fields here; adjust to your actual columns
+REPORT_FIELDS = ["report_id","equipment_id","fault_description","corrective_action","inspection_date","author"]
+reports  = load_csv(REPORT_CSV,  REPORT_FIELDS)
 
-# ——————————————————————————————
-# 2) Normalize columns
-# ——————————————————————————————
-all_df.rename(columns={
-    "report_id":        "id",
-    "equipment_id":     "equipment",
-    "inspection_date":  "date",
-    "fault_description":"issue",
-    "corrective_action":"fix",
-    "author":           "technician",
-    "Prepared by":      "technician",
-}, inplace=True)
+# learned entries: we’ll store two columns: “trigger” and “response”
+LEARNED_FIELDS = ["trigger","response"]
+learned = load_csv(LEARNED_CSV, LEARNED_FIELDS)
 
-wanted = ["id","equipment","date","issue","fix","technician"]
-all_df   = all_df.reindex(columns=wanted).fillna("").astype(str)
-all_df   = all_df[all_df["id"].str.strip() != ""]
 
-# ——————————————————————————————
-# 3) ChromaDB & OpenAI
-# ——————————————————————————————
-client     = chromadb.Client()
-collection = client.get_or_create_collection("service_reports")
-openai_api = OpenAI()
-
-# ——————————————————————————————
-# 4) Lazy indexing
-# ——————————————————————————————
-_index_lock   = threading.Lock()
-_indexed_flag = False
-
-def ensure_indexed():
-    global _indexed_flag
-    if _indexed_flag:
-        return
-    with _index_lock:
-        if _indexed_flag:
-            return
-        logger.info("🔍 Indexing records…")
-        for _, row in all_df.iterrows():
-            text = f"{row['issue']} {row['fix']}"
-            emb  = openai_api.embeddings.create(
-                input=text, model="text-embedding-3-small"
-            ).data[0].embedding
-            collection.add(
-                ids=[row["id"]],
-                embeddings=[emb],
-                metadatas=[row.to_dict()],
-                documents=[text]
+# —————————————————————————————————————————————
+# 2) QUERY FUNCTIONS
+# —————————————————————————————————————————————
+def find_in_reports(query):
+    """Look for records where query appears in equipment_id, fault_description,
+       corrective_action or author. Return list of nicely formatted strings."""
+    q = query.lower()
+    hits = []
+    for r in reports:
+        if any(q in (r.get(f) or "").lower() for f in ("equipment_id","fault_description","corrective_action","author")):
+            hits.append(
+                f"Report {r['report_id']} by {r.get('author','?')} on {r['inspection_date']}:\n"
+                f" • Equipment: {r['equipment_id']}\n"
+                f" • Issue: {r['fault_description']}\n"
+                f" • Fix: {r['corrective_action']}"
             )
-        _indexed_flag = True
-        logger.info("✅ Indexed all service records")
+    return hits
 
-# ——————————————————————————————
-# 5) Learning machinery
-# ——————————————————————————————
-LEARNED_CSV     = os.path.join(DATA_DIR, "learned.csv")
-_pending_learns = {}
+def find_in_learned(query):
+    """Look for triggers in learned entries."""
+    q = query.lower()
+    for entry in learned:
+        if q == (entry.get("trigger") or "").lower():
+            return entry.get("response")
+    return None
 
-def learn_record(orig_q: str, answer: str):
-    ts     = int(datetime.datetime.now().timestamp())
-    new_id = f"LEARNED-{ts}"
-    today  = datetime.date.today().isoformat()
-    row    = {
-        "id":         new_id,
-        "equipment":  "",
-        "date":       today,
-        "issue":      orig_q,
-        "fix":        answer,
-        "technician": "",
-    }
-    exists = os.path.isfile(LEARNED_CSV)
+def append_learned(trigger, response):
+    """Persist a learned response to CSV and in‑memory."""
     with open(LEARNED_CSV, "a", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=row.keys())
-        if not exists:
-            writer.writeheader()
-        writer.writerow(row)
-    text = f"{row['issue']} {row['fix']}"
-    emb  = openai_api.embeddings.create(
-        input=text, model="text-embedding-3-small"
-    ).data[0].embedding
-    collection.add(
-        ids=[row["id"]],
-        embeddings=[emb],
-        metadatas=[row],
-        documents=[text]
-    )
-    logger.info(f"📝 Learned new record {new_id}")
+        writer = csv.writer(f)
+        writer.writerow([trigger, response])
+    learned.append({"trigger": trigger, "response": response})
 
-# ——————————————————————————————
-# 6) Last‐job helper
-# ——————————————————————————————
-def find_last_job(name: str):
-    df = all_df[all_df["technician"].str.contains(name, case=False, na=False)]
-    if df.empty:
-        return None
-    df2  = df.assign(_dt=pd.to_datetime(df["date"], errors="coerce"))
-    last = df2.sort_values("_dt", ascending=False).iloc[0]
-    return f"{name}'s last job (Report {last['id']} on {last['date']}):\nIssue: {last['issue']}\nFix: {last['fix']}"
 
-# ——————————————————————————————
-# 7) Build prompt
-# ——————————————————————————————
-def create_prompt(q: str, k=5):
-    qemb    = openai_api.embeddings.create(input=q, model="text-embedding-3-small").data[0].embedding
-    results = collection.query(query_embeddings=[qemb], n_results=k)
-    hits    = results["metadatas"][0]
-    logger.info(f"👀 Hits: {[h['id'] for h in hits]}")
-    prompt  = "You are a bot. Only use these records. If none apply, ask to learn.\n\n"
-    for r in hits:
-        prompt += f"- {r['id']} | {r['equipment']} | {r['date']}\n  Issue: {r['issue']}\n  Fix: {r['fix']}\n\n"
-    prompt += f"Question: {q}\nAnswer:"
-    return prompt
-
-# ——————————————————————————————
-# 8) Flask routes
-# ——————————————————————————————
+# —————————————————————————————————————————————
+# 3) FLASK + TWILIO WEBHOOK
+# —————————————————————————————————————————————
 app = Flask(__name__)
-
-@app.route("/", methods=["GET"])
-def health():
-    return "OK", 200
-
-@app.route("/debug/hits", methods=["GET"])
-def debug_hits():
-    # show last query hits (if any)
-    return jsonify(last_hits=[h['id'] for h in collection.peek().metadatas]), 200
 
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_bot():
-    ensure_indexed()
+    body = request.values.get("Body", "").strip()
+    if not body:
+        return ("", 204)
 
-    frm = request.values.get("From")
-    txt = (request.values.get("Body") or "").strip()
-    logger.info(f"❓ Received from {frm!r}: {txt!r}")
+    resp = MessagingResponse()
 
-    tw = MessagingResponse()
+    # 1) Check learned first
+    learned_resp = find_in_learned(body)
+    if learned_resp:
+        resp.message(learned_resp)
+        return str(resp)
 
-    # 1) Phase 2 learning?
-    if frm in _pending_learns:
-        orig = _pending_learns.pop(frm)
-        learn_record(orig, txt)
-        tw.message("Thanks! I’ve learned that and will remember it.")
-        return str(tw)
+    # 2) Search service reports
+    hits = find_in_reports(body)
+    if hits:
+        # join up to 3 matches
+        reply = "\n\n".join(hits[:3])
+        resp.message(reply)
+        return str(resp)
 
-    # 2) Last‐job?
-    import re
-    m = re.search(r"what did (\w+) do on (?:his|her|their) last job", txt, re.IGNORECASE)
-    if m:
-        ans = find_last_job(m.group(1)) or "I couldn’t find that technician."
-        tw.message(ans)
-        return str(tw)
+    # 3) Zero matches: ask if we should learn
+    #    We’ll treat “yes” answers separately below.
+    if body.lower() in ("yes","y","sure","ok","please"):
+        # in your flow, you’ll need to capture the *last* question
+        # here we’ll cheat: assume the last question was stored
+        # as `session['last_question']` in a real app.
+        trigger = whatsapp_bot.last_question
+        response_text = whatsapp_bot.last_proposed_response or "..."
+        append_learned(trigger, response_text)
+        resp.message("Got it! I've learned that.")
+        return str(resp)
 
-    # 3) Retrieval + Chat
-    prompt = create_prompt(txt)
-    try:
-        chat = openai_api.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role":"user","content":prompt}],
-            temperature=0.2,
-        )
-        answer = chat.choices[0].message.content.strip()
-    except Exception as e:
-        answer = f"Error: {e}"
-
-    # 4) Queue learn if asked
-    if "Would you like me to learn" in answer:
-        _pending_learns[frm] = txt
-
-    tw.message(answer)
-    return str(tw)
+    # 4) No matches & not a “yes” answer: prompt learn
+    whatsapp_bot.last_question = body
+    whatsapp_bot.last_proposed_response = f"Okay, what should I answer when asked: “{body}”?"
+    resp.message(
+        "I’m sorry, I don’t have that in the service records. "
+        "Would you like me to learn that? (yes/no)"
+    )
+    return str(resp)
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    # ensure data folder + files exist
+    os.makedirs(DATA_DIR, exist_ok=True)
+    # touch Learned.csv if missing
+    if not os.path.exists(LEARNED_CSV):
+        open(LEARNED_CSV, "w", newline="", encoding="utf-8").close()
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT",5000)))
