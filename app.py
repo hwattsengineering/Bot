@@ -27,27 +27,20 @@ all_df = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
 # 2) Normalize & map columns
 # ——————————————————————————————
 all_df.rename(columns={
-    "report_id":                                    "id",
-    "equipment_id":                                 "equipment",
-    "inspection_date":                              "date",
-    "fault_description":                            "issue",
-
-    # Map any of these CSV headers into our fix field:
-    "Description of works carried out":             "fix",
-    "Fix_Solution":                                 "fix",
-    "Fix_solution":                                 "fix",
-
-    # Map your sign‑off tech fields into technician:
+    "report_id":                                  "id",
+    "equipment_id":                               "equipment",
+    "inspection_date":                            "date",
+    "fault_description":                          "issue",
+    "Description of works carried out":           "fix",
+    "Fix_Solution":                               "fix",
+    "Fix_solution":                               "fix",
     "FST Report_Completion _Sign Off Service Tech:": "technician",
-    "Prepared by":                                  "technician",
+    "Prepared by":                                "technician",
 }, inplace=True)
 
-
-for col in ("id","equipment","date","issue","fix","technician"):
-    if col in all_df.columns:
-        all_df[col] = all_df[col].fillna("").astype(str)
-    else:
-        all_df[col] = ""
+# Reindex once to avoid fragmentation, fill missing with empty strings, cast all to str
+desired_cols = ["id","equipment","date","issue","fix","technician"]
+all_df = all_df.reindex(columns=desired_cols).fillna("").astype(str)
 
 # Drop any records without an ID
 all_df = all_df[all_df["id"].str.strip() != ""]
@@ -55,7 +48,7 @@ all_df = all_df[all_df["id"].str.strip() != ""]
 # ——————————————————————————————
 # 3) Prepare ChromaDB & OpenAI
 # ——————————————————————————————
-client     = chromadb.Client()
+client     = chromadb.Client()  
 collection = client.get_or_create_collection("service_reports")
 openai_api = OpenAI()  # uses OPENAI_API_KEY
 
@@ -69,7 +62,7 @@ def ensure_index():
     global _indexed_flag
     if _indexed_flag:
         return
-    with _index_lock:
+    with _indexed_lock:
         if _indexed_flag:
             return
         for _, row in all_df.iterrows():
@@ -100,7 +93,6 @@ def ensure_index():
 # ——————————————————————————————
 app = Flask(__name__)
 
-# Health‑check endpoint
 @app.route("/", methods=["GET"])
 def health_check():
     return "OK", 200
@@ -108,8 +100,7 @@ def health_check():
 def handle_last_job_query(question: str):
     m = re.search(
         r"what did (\w+) do on (?:his|her|their) last job",
-        question,
-        re.IGNORECASE
+        question, re.IGNORECASE
     )
     if not m:
         return None
@@ -126,25 +117,22 @@ def handle_last_job_query(question: str):
     )
 
 def generate_prompt(question: str, top_k: int = 5) -> str:
-    # Embed the incoming question
     resp  = openai_api.embeddings.create(
         input=question,
         model="text-embedding-3-small"
     )
     q_emb = resp.data[0].embedding
 
-    # Retrieve the top_k most relevant records
     results = collection.query(
         query_embeddings=[q_emb],
         n_results=top_k
     )
     hits = results["metadatas"][0]
 
-    # Build a strict prompt
     prompt = (
         "You are a CryoFERM AI assistant. You have access to these service records.\n"
         "ONLY answer based on these records. Do NOT invent any details.\n"
-        "If the answer isn't here, you will say so and ask if it's OK to search externally.\n\n"
+        "If the answer isn’t in the records above, say so and ask if it’s OK to search externally.\n\n"
     )
     for rpt in hits:
         prompt += (
@@ -158,32 +146,25 @@ def generate_prompt(question: str, top_k: int = 5) -> str:
 
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_bot():
-    # Ensure the index is built before any query
     ensure_index()
 
     incoming = request.values.get("Body", "").strip()
     if not incoming:
         return "OK"
 
-    # 1) Direct “last job” handler
     direct = handle_last_job_query(incoming)
     if direct:
         reply = direct
     else:
-        # 2) Perform retrieval & LLM
         prompt = generate_prompt(incoming, top_k=5)
-        resp = openai_api.chat.completions.create(
+        resp   = openai_api.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role":"user","content":prompt}],
             temperature=0.3
         )
         answer = resp.choices[0].message.content.strip()
-        # 3) If model says it doesn't know, ask permission
-        if "I don’t have" in answer or "don't have" in answer:
-            reply = (
-                f"{answer}\n\n"
-                "Would you like me to search external resources for an answer?"
-            )
+        if re.search(r"don’t have|don't have|no records", answer, re.IGNORECASE):
+            reply = f"{answer}\n\nWould you like me to search external resources?"
         else:
             reply = answer
 
