@@ -2,5 +2,5 @@ id,date,equipment,issue,solution,technician,tags
 O2CLEAN,2025-08-08,ALL,Oxygen cleaning,Use Blue Gold to clean oxygen systems.,System,oxygen;cleaning
 L20250808133613,2025-08-08,,,blue gold and ensolve,,
 L20250808133723,2025-08-08,,What do we use for oxygen cleaning?,,,unsolved
-L20250808140205,2025-08-08,,,"check that the email stops aren't pushed in, check that the interlock was in the correct position before the driver build air. If the engine e stops weren't pushed in and the interlock was in the correct position check that you have air running through all the e stops",,
+L20250808140205,2025-08-08,,,"check that the e stops aren't pushed in, check that the interlock was in the correct position before the driver build air. If the e stops weren't pushed in and the interlock was in the correct position check that you have air running through all the e stops",,
 L20250808140420,2025-08-08,,I cant get the actuator valves to open on a tanker,,,unsolved
