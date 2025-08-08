@@ -75,3 +75,42 @@ def github_put_file(new_text: str, sha: str | None, message: str):
     payload = {
         "message": message,
         "content": base64.b64encode(new_text.encode("utf-8")).decode("utf-8"),
+    } # <-- Corrected: Added missing closing brace
+    if sha:
+        payload["sha"] = sha
+    r = requests.put(url, headers=headers, data=json.dumps(payload))
+    if r.status_code in (200, 201):
+        return True, "Saved to GitHub"
+    return False, f"GitHub save failed: {r.status_code} {r.text[:120]}"
+
+def sync_from_github() -> str:
+    """Pull latest file from GitHub and overwrite local. No-op if not configured."""
+    sha, text = github_get_file()
+    if text is None:
+        return "GitHub not configured; using local data only."
+    os.makedirs(DATA_DIR, exist_ok=True)
+    with open(LEARNED_PATH, "w", encoding="utf-8") as f:
+        f.write(text)
+    return "Pulled latest from GitHub."
+
+def push_to_github(df: pd.DataFrame, commit_msg: str) -> str:
+    """Push current df to GitHub, or say not configured."""
+    if not (GH_TOKEN and GH_REPO):
+        return "Saved locally (no GitHub config). Data may reset on redeploy."
+    sha, _ = github_get_file()
+    buf = io.StringIO()
+    df[COLUMNS].to_csv(buf, index=False)
+    ok, msg = github_put_file(buf.getvalue(), sha, commit_msg)
+    return msg
+
+def now_date() -> str:
+    # UTC date string
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+def new_id() -> str:
+    return "L" + datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+
+def parse_teach(body: str) -> Dict[str, str]:
+    """
+    TEACH id=..., date=..., equipment=..., issue=..., solution=..., technician=..., tags=...
+    Semicolons
