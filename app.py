@@ -18,7 +18,7 @@ LEARNED_PATH = os.path.join(DATA_DIR, "Learned.csv")
 
 # Optional GitHub persistence
 GH_TOKEN = os.getenv("GH_TOKEN", "").strip()      # Personal Access Token (repo scope)
-GH_REPO  = os.getenv("GH_REPO", "").strip()       # e.g. "hwattsengineering/Bot"
+GH_REPO  = os.getenv("GH_REPO", "").strip()        # e.g. "hwattsengineering/Bot"
 
 # OpenAI is optional (used only to nicely word answers). If not set, we reply with concise facts.
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
@@ -58,7 +58,6 @@ def github_get_file():
     """Return (sha, text) or (None, None) if not found or not configured."""
     if not (GH_TOKEN and GH_REPO):
         return None, None
-    url = f"https://api.github.com/repos/{GH_REPO}/contents/{LEARNED_PATH.replace(os.path.dirname(__file__)+os.sep,'').replace('\\', '/')}"
     # the path we just built is relative to repo root: "data/Learned.csv"
     url = f"https://api.github.com/repos/{GH_REPO}/contents/data/Learned.csv"
     headers = {"Authorization": f"token {GH_TOKEN}", "Accept": "application/vnd.github+json"}
@@ -214,13 +213,13 @@ def whatsapp():
 
         df = load_df()
         row = {
-            "id":        data.get("id", new_id()),
-            "date":      data.get("date", now_date()),
-            "equipment": data.get("equipment", ""),
-            "issue":     data.get("issue", ""),
-            "solution":  data.get("solution", ""),
-            "technician":data.get("technician", ""),
-            "tags":      data.get("tags", ""),
+            "id":         data.get("id", new_id()),
+            "date":       data.get("date", now_date()),
+            "equipment":  data.get("equipment", ""),
+            "issue":      data.get("issue", ""),
+            "solution":   data.get("solution", ""),
+            "technician": data.get("technician", ""),
+            "tags":       data.get("tags", ""),
         }
         # upsert by id (replace any existing row with same id)
         df = df[df["id"] != row["id"]]
@@ -278,13 +277,44 @@ def whatsapp():
         )
         return str(tw)
 
-    # Free-form Q&A (learn-only)
+    # ----------[ MODIFIED SECTION ]----------
+    # Free-form Q&A: Search first, and if no results, learn it as a new issue.
     df = load_df()
     hits = simple_search(df, body, limit=6)
-    rows = hits.to_dict(orient="records")
-    answer = compose_answer(body, rows)
-    tw.message(answer)
-    return str(tw)
+
+    if not hits.empty:
+        # Standard case: We found matches, so compose an answer and send it.
+        rows = hits.to_dict(orient="records")
+        answer = compose_answer(body, rows)
+        tw.message(answer)
+        return str(tw)
+    else:
+        # NEW: No matches found. Learn this message as a new, unsolved issue.
+        new_entry_id = new_id()
+        row = {
+            "id":         new_entry_id,
+            "date":       now_date(),
+            "equipment":  "",  # Unknown from a simple message
+            "issue":      body, # The message body is the issue
+            "solution":   "",  # No solution yet
+            "technician": "",  # Unknown
+            "tags":       "unsolved", # Tag for easy filtering later
+        }
+
+        # Add new row, save, and push
+        df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
+        save_df_local(df)
+        gh_msg = push_to_github(df, f"Auto-learn new issue {new_entry_id} from WhatsApp")
+
+        # Reply to user confirming the new entry and how to update it
+        reply_msg = (
+            f"✅ Learned new issue: \"{body}\"\n"
+            f"ID: {new_entry_id}\n\n"
+            "I don't have a solution yet. When you do, teach me with:\n"
+            f"TEACH id={new_entry_id}; solution=..."
+        )
+        tw.message(reply_msg)
+        return str(tw)
 
 # ---------- Entrypoint ----------
 if __name__ == "__main__":
