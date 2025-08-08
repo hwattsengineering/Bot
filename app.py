@@ -113,4 +113,233 @@ def new_id() -> str:
 def parse_teach(body: str) -> Dict[str, str]:
     """
     TEACH id=..., date=..., equipment=..., issue=..., solution=..., technician=..., tags=...
-    Semicolons
+    Semicolons separate pairs. Keys case-insensitive.
+    """
+    # remove leading 'TEACH'
+    text = body.strip()[5:].strip() if body.strip().upper().startswith("TEACH") else body
+    parts = [p.strip() for p in text.split(";") if p.strip()]
+    data: Dict[str, str] = {}
+    for p in parts:
+        if "=" in p:
+            k, v = p.split("=", 1)
+            data[k.strip().lower()] = v.strip()
+    return data
+
+def format_hits(rows: List[Dict[str, str]]) -> str:
+    bullets = []
+    for r in rows:
+        bullets.append(
+            f"- ID {r['id']} | {r['date']} | {r['equipment']} | Tech: {r['technician']}\n"
+            f"  Issue: {r['issue']}\n"
+            f"  Solution: {r['solution']}"
+        )
+    return "\n".join(bullets)
+
+def simple_search(df: pd.DataFrame, question: str, limit: int = 6) -> pd.DataFrame:
+    """
+    Smarter, token-based keyword search. Splits the question into important words
+    and scores rows based on how many words they contain.
+    """
+    # 1. Get important search terms from the question.
+    q_lower = question.lower()
+    stop_words = {'is', 'a', 'an', 'the', 'what', 'why', 'how', 'when', 'who', 'for', 'on', 'in', 'it', 'to', 'of'}
+    search_terms = {word for word in re.split(r'\W+', q_lower) if word and word not in stop_words and len(word) > 1}
+
+    if not search_terms:
+        return pd.DataFrame(columns=df.columns)
+
+    # 2. Create a single, combined text field for each row to search within.
+    searchable_df = df.copy()
+    searchable_df['search_text'] = (
+        searchable_df['id'].str.lower() + ' ' +
+        searchable_df['equipment'].str.lower() + ' ' +
+        searchable_df['issue'].str.lower() + ' ' +
+        searchable_df['solution'].str.lower() + ' ' +
+        searchable_df['technician'].str.lower() + ' ' +
+        searchable_df['tags'].str.lower()
+    )
+
+    # 3. Score each row by counting how many search terms it contains.
+    def count_matches(text_to_search):
+        return sum(1 for term in search_terms if term in text_to_search)
+
+    searchable_df['score'] = searchable_df['search_text'].apply(count_matches)
+
+    # 4. Filter for rows that have at least one match.
+    hits = searchable_df[searchable_df['score'] > 0].copy()
+
+    # 5. Sort the best matches to the top (by score, then by date).
+    if not hits.empty:
+        if "date" in hits.columns:
+            hits["_dt"] = pd.to_datetime(hits["date"], errors="coerce")
+            hits = hits.sort_values(by=["score", "_dt"], ascending=[False, False])
+            hits = hits.drop(columns=["_dt"], errors="ignore")
+        else:
+            hits = hits.sort_values(by="score", ascending=False)
+
+    # 6. Return the top N hits, without the temporary 'score' and 'search_text' columns.
+    return hits.drop(columns=['search_text', 'score'], errors='ignore').head(limit)
+
+
+def compose_answer(question: str, rows: List[Dict[str, str]]) -> str:
+    """If OPENAI_API_KEY is set, ask it to phrase the answer using ONLY rows."""
+    if not OPENAI_API_KEY:
+        # Fallback: return the facts directly
+        if not rows:
+            return ("I don't have any records for that yet.\n\n"
+                    "Teach me with:\n"
+                    "TEACH equipment=..., issue=..., solution=..., technician=..., tags=...\n"
+                    "Optional: id=..., date=YYYY-MM-DD")
+        facts = format_hits(rows)
+        return f"Based on what I've learned:\n{facts}"
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=OPENAI_API_KEY)
+        context = format_hits(rows) if rows else "(no matching rows)"
+        system = (
+            "You are a strict retrieval bot. Answer ONLY with information provided in the records. "
+            "If nothing matches, say you have no record and ask the user to TEACH."
+        )
+        user = f"Question: {question}\n\nRecords:\n{context}"
+        resp = client.chat.completions.create(
+            model=OPENAI_MODEL,
+            messages=[{"role": "system", "content": system},
+                      {"role": "user", "content": user}],
+            temperature=0.0,
+        )
+        answer = resp.choices[0].message.content.strip()
+        return answer
+    except Exception as e:
+        facts = format_hits(rows)
+        return f"Based on what I've learned:\n{facts}\n\n(Note: phrasing fallback due to: {e})"
+
+# ---------- Flask ----------
+app = Flask(__name__)
+
+@app.route("/", methods=["GET"])
+def health():
+    return "OK", 200
+
+@app.route("/whatsapp", methods=["POST"])
+def whatsapp():
+    body = (request.values.get("Body") or "").strip()
+    from_num = request.values.get("From", "<unknown>")
+    print(f"📩 From {from_num} :: {body}")
+
+    tw = MessagingResponse()
+
+    # Commands
+    upper = body.upper()
+
+    if upper.startswith("TEACH"):
+        data = parse_teach(body)
+        if not data.get("solution") and not data.get("issue"):
+            tw.message("Please include at least issue=... or solution=... in your TEACH command.")
+            return str(tw)
+
+        df = load_df()
+        row = {
+            "id":         data.get("id", new_id()),
+            "date":       data.get("date", now_date()),
+            "equipment":  data.get("equipment", ""),
+            "issue":      data.get("issue", ""),
+            "solution":   data.get("solution", ""),
+            "technician": data.get("technician", ""),
+            "tags":       data.get("tags", ""),
+        }
+        # upsert by id (replace any existing row with same id)
+        df = df[df["id"] != row["id"]]
+        df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
+        save_df_local(df)
+        msg = push_to_github(df, f"Teach {row['id']} from WhatsApp")
+        tw.message(f"✅ Learned {row['id']} | {row['equipment']} | {row['issue']}\n{msg}")
+        return str(tw)
+
+    if upper in ("SYNC", "RELOAD"):
+        note = sync_from_github()
+        df = load_df()
+        tw.message(f"🔄 Reloaded records ({len(df)}). {note}")
+        return str(tw)
+
+    if upper.startswith("DELETE"):
+        m = re.search(r"id\s*=\s*([\w\-]+)", body, flags=re.IGNORECASE)
+        if not m:
+            tw.message("Usage: DELETE id=YOUR_ID")
+            return str(tw)
+        rid = m.group(1)
+        df = load_df()
+        before = len(df)
+        df = df[df["id"] != rid]
+        after = len(df)
+        save_df_local(df)
+        msg = push_to_github(df, f"Delete {rid} from WhatsApp")
+        tw.message(f"🗑️ Deleted {rid}. {before-after} row(s) removed. {msg}")
+        return str(tw)
+
+    if upper.startswith("LIST"):
+        n = 5
+        m = re.search(r"LIST\s+(\d+)", upper)
+        if m:
+            n = max(1, min(20, int(m.group(1))))
+        df = load_df().tail(n)
+        if df.empty:
+            tw.message("No learned records yet. Use TEACH to add one.")
+            return str(tw)
+        lines = []
+        for _, r in df.iterrows():
+            lines.append(f"{r['id']} | {r['date']} | {r['equipment']} | {r['issue']} -> {r['solution']}")
+        tw.message("Recent:\n" + "\n".join(lines))
+        return str(tw)
+
+    if upper in ("HELP", "?"):
+        tw.message(
+            "Commands:\n"
+            "TEACH id=O2CLEAN; date=2025-08-08; equipment=O2 systems; "
+            "issue=Oxygen cleaning; solution=Use Blue Gold; technician=Angus; tags=oxygen,cleaning\n"
+            "LIST 5\nDELETE id=...  \nSYNC (pull latest from GitHub)\n"
+            "Ask free-form questions too. I only answer from what I've learned."
+        )
+        return str(tw)
+
+    # Free-form Q&A: Search first, and if no results, learn it as a new issue.
+    df = load_df()
+    hits = simple_search(df, body, limit=6)
+
+    if not hits.empty:
+        # We found matches, so compose an answer and send it.
+        rows = hits.to_dict(orient="records")
+        answer = compose_answer(body, rows)
+        tw.message(answer)
+        return str(tw)
+    else:
+        # No matches found. Learn this message as a new, unsolved issue.
+        new_entry_id = new_id()
+        row = {
+            "id":         new_entry_id,
+            "date":       now_date(),
+            "equipment":  "",
+            "issue":      body,
+            "solution":   "",
+            "technician": "",
+            "tags":       "unsolved",
+        }
+
+        # Add new row, save, and push
+        df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
+        save_df_local(df)
+        gh_msg = push_to_github(df, f"Auto-learn new issue {new_entry_id} from WhatsApp")
+
+        # Reply to user confirming the new entry and how to update it
+        reply_msg = (
+            f"✅ Learned new issue: \"{body}\"\n"
+            f"ID: {new_entry_id}\n\n"
+            "I don't have a solution yet. When you do, teach me with:\n"
+            f"TEACH id={new_entry_id}; solution=..."
+        )
+        tw.message(reply_msg)
+        return str(tw)
+
+# ---------- Entrypoint ----------
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", "5000"))
+    app.run(host="0.0.0.0", port=port, debug=True)
