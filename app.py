@@ -12,6 +12,10 @@ import pandas as pd
 from flask import Flask, request
 from twilio.twiml.messaging_response import MessagingResponse
 
+# NEW: semantic search
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import linear_kernel
+
 # ---------- Config ----------
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 LEARNED_PATH = os.path.join(DATA_DIR, "Learned.csv")
@@ -40,14 +44,10 @@ def load_df() -> pd.DataFrame:
         df = pd.read_csv(LEARNED_PATH, dtype=str).fillna("")
     except Exception:
         df = pd.DataFrame(columns=COLUMNS)
-
-    # make sure all expected columns exist
     for c in COLUMNS:
         if c not in df.columns:
             df[c] = ""
-    # keep just the columns we care about, in order
     df = df[COLUMNS]
-    # drop empty id rows
     df = df[df["id"].astype(str).str.strip() != ""]
     return df.reset_index(drop=True)
 
@@ -104,7 +104,6 @@ def push_to_github(df: pd.DataFrame, commit_msg: str) -> str:
     return msg
 
 def now_date() -> str:
-    # UTC date string
     return datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
 def new_id() -> str:
@@ -118,7 +117,6 @@ def parse_teach(body: str) -> Dict[str, str]:
     text = body.strip()
     if text.upper().startswith("TEACH"):
         text = text[5:].strip()
-
     # Split on semicolons NOT inside double quotes
     parts = re.split(r';(?=(?:[^"]*"[^"]*")*[^"]*$)', text)
     data: Dict[str, str] = {}
@@ -129,7 +127,6 @@ def parse_teach(body: str) -> Dict[str, str]:
         k, v = p.split("=", 1)
         k = k.strip().lower()
         v = v.strip()
-        # strip wrapping quotes (")
         if len(v) >= 2 and v[0] == '"' and v[-1] == '"':
             v = v[1:-1]
         data[k] = v
@@ -145,43 +142,53 @@ def format_hits(rows: List[Dict[str, str]]) -> str:
         )
     return "\n".join(bullets)
 
-def simple_search(df: pd.DataFrame, question: str, limit: int = 6) -> pd.DataFrame:
-    """
-    Keyword-ish search: splits the question into terms and scores rows by term hits.
-    """
-    q_lower = question.lower()
-    stop_words = {'is', 'a', 'an', 'the', 'what', 'why', 'how', 'when', 'who', 'for', 'on', 'in', 'it', 'to', 'of'}
-    search_terms = {w for w in re.split(r'\W+', q_lower) if w and w not in stop_words and len(w) > 1}
+# ---------- Semantic Search (TF-IDF) ----------
+_tfidf: TfidfVectorizer | None = None
+_tfidf_matrix = None
+_tfidf_index_rows: List[int] | None = None
 
-    if not search_terms:
-        return pd.DataFrame(columns=df.columns)
-
-    searchable_df = df.copy()
-    searchable_df['search_text'] = (
-        searchable_df['id'].str.lower() + ' ' +
-        searchable_df['equipment'].str.lower() + ' ' +
-        searchable_df['issue'].str.lower() + ' ' +
-        searchable_df['solution'].str.lower() + ' ' +
-        searchable_df['technician'].str.lower() + ' ' +
-        searchable_df['tags'].str.lower()
+def _build_tfidf(df: pd.DataFrame):
+    """Build or rebuild the TF-IDF index from the dataframe."""
+    global _tfidf, _tfidf_matrix, _tfidf_index_rows
+    if df.empty:
+        _tfidf = None
+        _tfidf_matrix = None
+        _tfidf_index_rows = None
+        return
+    texts = (
+        df['equipment'].fillna('') + ' ' +
+        df['issue'].fillna('') + ' ' +
+        df['solution'].fillna('') + ' ' +
+        df['technician'].fillna('') + ' ' +
+        df['tags'].fillna('')
+    ).astype(str).tolist()
+    _tfidf = TfidfVectorizer(
+        lowercase=True,
+        stop_words="english",
+        ngram_range=(1, 3),  # phrases up to 3 words
+        min_df=1
     )
+    _tfidf_matrix = _tfidf.fit_transform(texts)
+    _tfidf_index_rows = df.index.tolist()
 
-    def count_matches(text_to_search: str) -> int:
-        return sum(1 for term in search_terms if term in text_to_search)
+def semantic_search(df: pd.DataFrame, query: str, k: int = 6) -> pd.DataFrame:
+    """Return top-k rows by cosine similarity. Builds the index on-demand if needed."""
+    global _tfidf, _tfidf_matrix, _tfidf_index_rows
+    if _tfidf is None or _tfidf_matrix is None or not _tfidf_index_rows:
+        _build_tfidf(df)
+        if _tfidf is None:
+            return pd.DataFrame(columns=df.columns)
+    q_vec = _tfidf.transform([query])
+    sims = linear_kernel(q_vec, _tfidf_matrix).ravel()  # cosine similarity
+    if sims.max(initial=0) <= 0:
+        return pd.DataFrame(columns=df.columns)
+    top_idx = sims.argsort()[::-1][:k]
+    rows = [_tfidf_index_rows[i] for i in top_idx]
+    out = df.loc[rows].copy()
+    out["score"] = sims[top_idx]
+    return out.sort_values("score", ascending=False)
 
-    searchable_df['score'] = searchable_df['search_text'].apply(count_matches)
-
-    hits = searchable_df[searchable_df['score'] > 0].copy()
-    if not hits.empty:
-        if "date" in hits.columns:
-            hits["_dt"] = pd.to_datetime(hits["date"], errors="coerce")
-            hits = hits.sort_values(by=["score", "_dt"], ascending=[False, False])
-            hits = hits.drop(columns=["_dt"], errors="ignore")
-        else:
-            hits = hits.sort_values(by="score", ascending=False)
-
-    return hits.drop(columns=['search_text', 'score'], errors='ignore').head(limit)
-
+# ---------- Optional: nicer phrasing via OpenAI ----------
 def compose_answer(question: str, rows: List[Dict[str, str]]) -> str:
     """If OPENAI_API_KEY is set, ask it to phrase the answer using ONLY rows."""
     if not OPENAI_API_KEY:
@@ -250,12 +257,19 @@ def whatsapp():
         save_df_local(df)
         gh_msg = push_to_github(df, f"Teach {row['id']} from WhatsApp")
 
+        # 🔥 Rebuild TF-IDF index after updating data
+        _build_tfidf(df)
+
         tw.message(f"✅ Learned {row['id']} | {row['equipment']} | {row['issue']}\n{gh_msg}")
         return str(tw)
 
     if upper in ("SYNC", "RELOAD"):
         note = sync_from_github()
         df = load_df()
+
+        # 🔥 Rebuild TF-IDF after sync
+        _build_tfidf(df)
+
         tw.message(f"🔄 Reloaded records ({len(df)}). {note}")
         return str(tw)
 
@@ -271,6 +285,10 @@ def whatsapp():
         after = len(df)
         save_df_local(df)
         gh_msg = push_to_github(df, f"Delete {rid} from WhatsApp")
+
+        # 🔥 Rebuild TF-IDF after deletion
+        _build_tfidf(df)
+
         tw.message(f"🗑️ Deleted {rid}. {before - after} row(s) removed.\n{gh_msg}")
         return str(tw)
 
@@ -299,12 +317,12 @@ def whatsapp():
         )
         return str(tw)
 
-    # Free-form Q&A: search first
+    # Free-form Q&A → use semantic search
     df = load_df()
-    hits = simple_search(df, body, limit=6)
+    hits = semantic_search(df, body, k=6)
 
     if not hits.empty:
-        rows = hits.to_dict(orient="records")
+        rows = hits.drop(columns=["score"], errors="ignore").to_dict(orient="records")
         answer = compose_answer(body, rows)
         tw.message(answer)
         return str(tw)
@@ -320,10 +338,12 @@ def whatsapp():
             "technician": "",
             "tags":       "unsolved",
         }
-
         df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
         save_df_local(df)
         gh_msg = push_to_github(df, f"Auto-learn new issue {new_entry_id} from WhatsApp")
+
+        # 🔥 Rebuild TF-IDF after adding new row
+        _build_tfidf(df)
 
         reply_msg = (
             f"✅ Learned new issue: \"{body}\"\n"
