@@ -12,9 +12,10 @@ import pandas as pd
 from flask import Flask, request
 from twilio.twiml.messaging_response import MessagingResponse
 
-# NEW: semantic search
+# Semantic search + fuzzy fallback
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
+from rapidfuzz import fuzz
 
 # ---------- Config ----------
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
@@ -44,10 +45,12 @@ def load_df() -> pd.DataFrame:
         df = pd.read_csv(LEARNED_PATH, dtype=str).fillna("")
     except Exception:
         df = pd.DataFrame(columns=COLUMNS)
+    # ensure all columns exist and are ordered
     for c in COLUMNS:
         if c not in df.columns:
             df[c] = ""
     df = df[COLUMNS]
+    # drop empty id rows
     df = df[df["id"].astype(str).str.strip() != ""]
     return df.reset_index(drop=True)
 
@@ -64,7 +67,7 @@ def github_get_file():
     if r.status_code == 200:
         js = r.json()
         content = base64.b64decode(js["content"]).decode("utf-8", errors="ignore")
-        return js["sha"], content
+        return js.get("sha"), content
     return None, None
 
 def github_put_file(new_text: str, sha: str | None, message: str):
@@ -104,6 +107,7 @@ def push_to_github(df: pd.DataFrame, commit_msg: str) -> str:
     return msg
 
 def now_date() -> str:
+    # UTC date string
     return datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
 def new_id() -> str:
@@ -117,6 +121,7 @@ def parse_teach(body: str) -> Dict[str, str]:
     text = body.strip()
     if text.upper().startswith("TEACH"):
         text = text[5:].strip()
+
     # Split on semicolons NOT inside double quotes
     parts = re.split(r';(?=(?:[^"]*"[^"]*")*[^"]*$)', text)
     data: Dict[str, str] = {}
@@ -127,6 +132,7 @@ def parse_teach(body: str) -> Dict[str, str]:
         k, v = p.split("=", 1)
         k = k.strip().lower()
         v = v.strip()
+        # strip wrapping quotes
         if len(v) >= 2 and v[0] == '"' and v[-1] == '"':
             v = v[1:-1]
         data[k] = v
@@ -165,7 +171,7 @@ def _build_tfidf(df: pd.DataFrame):
     _tfidf = TfidfVectorizer(
         lowercase=True,
         stop_words="english",
-        ngram_range=(1, 3),  # phrases up to 3 words
+        ngram_range=(1, 3),  # capture short phrases
         min_df=1
     )
     _tfidf_matrix = _tfidf.fit_transform(texts)
@@ -187,6 +193,33 @@ def semantic_search(df: pd.DataFrame, query: str, k: int = 6) -> pd.DataFrame:
     out = df.loc[rows].copy()
     out["score"] = sims[top_idx]
     return out.sort_values("score", ascending=False)
+
+# ---------- Fuzzy fallback (RapidFuzz) ----------
+def fuzzy_search(df: pd.DataFrame, question: str, limit: int = 6, threshold: int = 50) -> pd.DataFrame:
+    """Fallback fuzzy search to handle typos/near-misses."""
+    if df.empty:
+        return df
+    q = question.lower()
+
+    hay = df.assign(
+        search_text=(
+            df['equipment'].str.lower() + ' ' +
+            df['issue'].str.lower() + ' ' +
+            df['solution'].str.lower() + ' ' +
+            df['technician'].str.lower() + ' ' +
+            df['tags'].str.lower()
+        ).fillna("")
+    )
+
+    hay["score"] = hay["search_text"].apply(lambda t: max(
+        fuzz.partial_ratio(q, t),
+        fuzz.token_set_ratio(q, t),
+        fuzz.QRatio(q, t)
+    ))
+
+    hits = hay[hay["score"] >= threshold].copy()
+    hits = hits.sort_values("score", ascending=False)
+    return hits.drop(columns=["search_text"]).head(limit)
 
 # ---------- Optional: nicer phrasing via OpenAI ----------
 def compose_answer(question: str, rows: List[Dict[str, str]]) -> str:
@@ -257,7 +290,7 @@ def whatsapp():
         save_df_local(df)
         gh_msg = push_to_github(df, f"Teach {row['id']} from WhatsApp")
 
-        # 🔥 Rebuild TF-IDF index after updating data
+        # Rebuild TF-IDF index after update
         _build_tfidf(df)
 
         tw.message(f"✅ Learned {row['id']} | {row['equipment']} | {row['issue']}\n{gh_msg}")
@@ -267,7 +300,7 @@ def whatsapp():
         note = sync_from_github()
         df = load_df()
 
-        # 🔥 Rebuild TF-IDF after sync
+        # Rebuild TF-IDF after sync
         _build_tfidf(df)
 
         tw.message(f"🔄 Reloaded records ({len(df)}). {note}")
@@ -286,7 +319,7 @@ def whatsapp():
         save_df_local(df)
         gh_msg = push_to_github(df, f"Delete {rid} from WhatsApp")
 
-        # 🔥 Rebuild TF-IDF after deletion
+        # Rebuild TF-IDF after deletion
         _build_tfidf(df)
 
         tw.message(f"🗑️ Deleted {rid}. {before - after} row(s) removed.\n{gh_msg}")
@@ -317,9 +350,11 @@ def whatsapp():
         )
         return str(tw)
 
-    # Free-form Q&A → use semantic search
+    # Free-form Q&A → semantic first, fuzzy fallback
     df = load_df()
     hits = semantic_search(df, body, k=6)
+    if hits.empty:
+        hits = fuzzy_search(df, body, limit=6, threshold=50)
 
     if not hits.empty:
         rows = hits.drop(columns=["score"], errors="ignore").to_dict(orient="records")
@@ -338,11 +373,12 @@ def whatsapp():
             "technician": "",
             "tags":       "unsolved",
         }
+
         df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
         save_df_local(df)
         gh_msg = push_to_github(df, f"Auto-learn new issue {new_entry_id} from WhatsApp")
 
-        # 🔥 Rebuild TF-IDF after adding new row
+        # Rebuild TF-IDF after adding new row
         _build_tfidf(df)
 
         reply_msg = (
