@@ -1,6 +1,7 @@
 flask
 twilio
 pandas
-chromadb
-openai>=1.0.0
+requests
 gunicorn
+scikit-learn
+openai    # optional; safe to include
