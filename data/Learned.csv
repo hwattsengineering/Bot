@@ -6,5 +6,4 @@ L20250808140205,2025-08-08,,,"check that the e stops aren't pushed in, check tha
 L20250808140420,2025-08-08,,I cant get the actuator valves to open on a tanker,,,unsolved
 L20250808143340,2025-08-08,,"tanker is building pressure 
 Solution= the tanker may have a bad vacuum, check vacuum. If vacuum is above 50 micron pull down with vacuum pump.",,,
-L20250808143511,2025-08-08,,"Ice on pressure build line and vaporiser
-Solution= pressure build regulator is allowing liquid to pass through",,,
+
