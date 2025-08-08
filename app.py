@@ -18,7 +18,7 @@ LEARNED_PATH = os.path.join(DATA_DIR, "Learned.csv")
 
 # Optional GitHub persistence
 GH_TOKEN = os.getenv("GH_TOKEN", "").strip()      # Personal Access Token (repo scope)
-GH_REPO  = os.getenv("GH_REPO", "").strip()        # e.g. "hwattsengineering/Bot"
+GH_REPO  = os.getenv("GH_REPO", "").strip()       # e.g. "hwattsengineering/Bot"
 
 # OpenAI is optional (used only to nicely word answers). If not set, we reply with concise facts.
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
@@ -75,7 +75,7 @@ def github_put_file(new_text: str, sha: str | None, message: str):
     payload = {
         "message": message,
         "content": base64.b64encode(new_text.encode("utf-8")).decode("utf-8"),
-    } # <-- Corrected: Added missing closing brace
+    }
     if sha:
         payload["sha"] = sha
     r = requests.put(url, headers=headers, data=json.dumps(payload))
@@ -113,16 +113,26 @@ def new_id() -> str:
 def parse_teach(body: str) -> Dict[str, str]:
     """
     TEACH id=..., date=..., equipment=..., issue=..., solution=..., technician=..., tags=...
-    Semicolons separate pairs. Keys case-insensitive.
+    Semicolons separate pairs. Values may be "quoted".
     """
-    # remove leading 'TEACH'
-    text = body.strip()[5:].strip() if body.strip().upper().startswith("TEACH") else body
-    parts = [p.strip() for p in text.split(";") if p.strip()]
+    text = body.strip()
+    if text.upper().startswith("TEACH"):
+        text = text[5:].strip()
+
+    # Split on semicolons NOT inside double quotes
+    parts = re.split(r';(?=(?:[^"]*"[^"]*")*[^"]*$)', text)
     data: Dict[str, str] = {}
     for p in parts:
-        if "=" in p:
-            k, v = p.split("=", 1)
-            data[k.strip().lower()] = v.strip()
+        p = p.strip()
+        if not p or "=" not in p:
+            continue
+        k, v = p.split("=", 1)
+        k = k.strip().lower()
+        v = v.strip()
+        # strip wrapping quotes (")
+        if len(v) >= 2 and v[0] == '"' and v[-1] == '"':
+            v = v[1:-1]
+        data[k] = v
     return data
 
 def format_hits(rows: List[Dict[str, str]]) -> str:
@@ -137,18 +147,15 @@ def format_hits(rows: List[Dict[str, str]]) -> str:
 
 def simple_search(df: pd.DataFrame, question: str, limit: int = 6) -> pd.DataFrame:
     """
-    Smarter, token-based keyword search. Splits the question into important words
-    and scores rows based on how many words they contain.
+    Keyword-ish search: splits the question into terms and scores rows by term hits.
     """
-    # 1. Get important search terms from the question.
     q_lower = question.lower()
     stop_words = {'is', 'a', 'an', 'the', 'what', 'why', 'how', 'when', 'who', 'for', 'on', 'in', 'it', 'to', 'of'}
-    search_terms = {word for word in re.split(r'\W+', q_lower) if word and word not in stop_words and len(word) > 1}
+    search_terms = {w for w in re.split(r'\W+', q_lower) if w and w not in stop_words and len(w) > 1}
 
     if not search_terms:
         return pd.DataFrame(columns=df.columns)
 
-    # 2. Create a single, combined text field for each row to search within.
     searchable_df = df.copy()
     searchable_df['search_text'] = (
         searchable_df['id'].str.lower() + ' ' +
@@ -159,16 +166,12 @@ def simple_search(df: pd.DataFrame, question: str, limit: int = 6) -> pd.DataFra
         searchable_df['tags'].str.lower()
     )
 
-    # 3. Score each row by counting how many search terms it contains.
-    def count_matches(text_to_search):
+    def count_matches(text_to_search: str) -> int:
         return sum(1 for term in search_terms if term in text_to_search)
 
     searchable_df['score'] = searchable_df['search_text'].apply(count_matches)
 
-    # 4. Filter for rows that have at least one match.
     hits = searchable_df[searchable_df['score'] > 0].copy()
-
-    # 5. Sort the best matches to the top (by score, then by date).
     if not hits.empty:
         if "date" in hits.columns:
             hits["_dt"] = pd.to_datetime(hits["date"], errors="coerce")
@@ -177,14 +180,11 @@ def simple_search(df: pd.DataFrame, question: str, limit: int = 6) -> pd.DataFra
         else:
             hits = hits.sort_values(by="score", ascending=False)
 
-    # 6. Return the top N hits, without the temporary 'score' and 'search_text' columns.
     return hits.drop(columns=['search_text', 'score'], errors='ignore').head(limit)
-
 
 def compose_answer(question: str, rows: List[Dict[str, str]]) -> str:
     """If OPENAI_API_KEY is set, ask it to phrase the answer using ONLY rows."""
     if not OPENAI_API_KEY:
-        # Fallback: return the facts directly
         if not rows:
             return ("I don't have any records for that yet.\n\n"
                     "Teach me with:\n"
@@ -207,8 +207,7 @@ def compose_answer(question: str, rows: List[Dict[str, str]]) -> str:
                       {"role": "user", "content": user}],
             temperature=0.0,
         )
-        answer = resp.choices[0].message.content.strip()
-        return answer
+        return resp.choices[0].message.content.strip()
     except Exception as e:
         facts = format_hits(rows)
         return f"Based on what I've learned:\n{facts}\n\n(Note: phrasing fallback due to: {e})"
@@ -227,8 +226,6 @@ def whatsapp():
     print(f"📩 From {from_num} :: {body}")
 
     tw = MessagingResponse()
-
-    # Commands
     upper = body.upper()
 
     if upper.startswith("TEACH"):
@@ -251,8 +248,9 @@ def whatsapp():
         df = df[df["id"] != row["id"]]
         df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
         save_df_local(df)
-        msg = push_to_github(df, f"Teach {row['id']} from WhatsApp")
-        tw.message(f"✅ Learned {row['id']} | {row['equipment']} | {row['issue']}\n{msg}")
+        gh_msg = push_to_github(df, f"Teach {row['id']} from WhatsApp")
+
+        tw.message(f"✅ Learned {row['id']} | {row['equipment']} | {row['issue']}\n{gh_msg}")
         return str(tw)
 
     if upper in ("SYNC", "RELOAD"):
@@ -272,8 +270,8 @@ def whatsapp():
         df = df[df["id"] != rid]
         after = len(df)
         save_df_local(df)
-        msg = push_to_github(df, f"Delete {rid} from WhatsApp")
-        tw.message(f"🗑️ Deleted {rid}. {before-after} row(s) removed. {msg}")
+        gh_msg = push_to_github(df, f"Delete {rid} from WhatsApp")
+        tw.message(f"🗑️ Deleted {rid}. {before - after} row(s) removed.\n{gh_msg}")
         return str(tw)
 
     if upper.startswith("LIST"):
@@ -294,25 +292,24 @@ def whatsapp():
     if upper in ("HELP", "?"):
         tw.message(
             "Commands:\n"
-            "TEACH id=O2CLEAN; date=2025-08-08; equipment=O2 systems; "
+            "TEACH id=O2CLEAN; date=2025-08-08; equipment=\"O2 systems\"; "
             "issue=Oxygen cleaning; solution=Use Blue Gold; technician=Angus; tags=oxygen,cleaning\n"
-            "LIST 5\nDELETE id=...  \nSYNC (pull latest from GitHub)\n"
+            "LIST 5\nDELETE id=...\nSYNC (pull latest from GitHub)\n"
             "Ask free-form questions too. I only answer from what I've learned."
         )
         return str(tw)
 
-    # Free-form Q&A: Search first, and if no results, learn it as a new issue.
+    # Free-form Q&A: search first
     df = load_df()
     hits = simple_search(df, body, limit=6)
 
     if not hits.empty:
-        # We found matches, so compose an answer and send it.
         rows = hits.to_dict(orient="records")
         answer = compose_answer(body, rows)
         tw.message(answer)
         return str(tw)
     else:
-        # No matches found. Learn this message as a new, unsolved issue.
+        # No matches found. Learn as new, unsolved issue.
         new_entry_id = new_id()
         row = {
             "id":         new_entry_id,
@@ -324,15 +321,14 @@ def whatsapp():
             "tags":       "unsolved",
         }
 
-        # Add new row, save, and push
         df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
         save_df_local(df)
         gh_msg = push_to_github(df, f"Auto-learn new issue {new_entry_id} from WhatsApp")
 
-        # Reply to user confirming the new entry and how to update it
         reply_msg = (
             f"✅ Learned new issue: \"{body}\"\n"
-            f"ID: {new_entry_id}\n\n"
+            f"ID: {new_entry_id}\n"
+            f"{gh_msg}\n\n"
             "I don't have a solution yet. When you do, teach me with:\n"
             f"TEACH id={new_entry_id}; solution=..."
         )
@@ -341,5 +337,6 @@ def whatsapp():
 
 # ---------- Entrypoint ----------
 if __name__ == "__main__":
+    # Local run: Flask dev server. On Render with gunicorn, this block is ignored.
     port = int(os.getenv("PORT", "5000"))
     app.run(host="0.0.0.0", port=port, debug=True)
