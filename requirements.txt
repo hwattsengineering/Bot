@@ -4,4 +4,5 @@ pandas
 requests
 gunicorn
 scikit-learn
-openai    # optional; safe to include
+rapidfuzz
+openai    # optional
