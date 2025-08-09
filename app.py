@@ -22,8 +22,8 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 LEARNED_PATH = os.path.join(DATA_DIR, "Learned.csv")
 
 # Optional GitHub persistence
-GH_TOKEN = os.getenv("GH_TOKEN", "").strip()      # Personal Access Token (repo scope)
-GH_REPO  = os.getenv("GH_REPO", "").strip()       # e.g. "hwattsengineering/Bot"
+GH_TOKEN = os.getenv("GH_TOKEN", "").strip()
+GH_REPO  = os.getenv("GH_REPO", "").strip()       # e.g. "yourorg/yourrepo"
 
 # OpenAI is optional (used only to nicely word answers). If not set, we reply with concise facts.
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
@@ -45,12 +45,10 @@ def load_df() -> pd.DataFrame:
         df = pd.read_csv(LEARNED_PATH, dtype=str).fillna("")
     except Exception:
         df = pd.DataFrame(columns=COLUMNS)
-    # ensure all columns exist and are ordered
     for c in COLUMNS:
         if c not in df.columns:
             df[c] = ""
     df = df[COLUMNS]
-    # drop empty id rows
     df = df[df["id"].astype(str).str.strip() != ""]
     return df.reset_index(drop=True)
 
@@ -87,7 +85,6 @@ def github_put_file(new_text: str, sha: str | None, message: str):
     return False, f"GitHub save failed: {r.status_code} {r.text[:120]}"
 
 def sync_from_github() -> str:
-    """Pull latest file from GitHub and overwrite local. No-op if not configured."""
     sha, text = github_get_file()
     if text is None:
         return "GitHub not configured; using local data only."
@@ -97,7 +94,6 @@ def sync_from_github() -> str:
     return "Pulled latest from GitHub."
 
 def push_to_github(df: pd.DataFrame, commit_msg: str) -> str:
-    """Push current df to GitHub, or say not configured."""
     if not (GH_TOKEN and GH_REPO):
         return "Saved locally (no GitHub config). Data may reset on redeploy."
     sha, _ = github_get_file()
@@ -107,39 +103,76 @@ def push_to_github(df: pd.DataFrame, commit_msg: str) -> str:
     return msg
 
 def now_date() -> str:
-    # UTC date string
     return datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
 def new_id() -> str:
     return "L" + datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
 
+# ---------- Robust TEACH parser ----------
+_TEACH_KEYS = {"id","date","equipment","issue","solution","technician","tags"}
+
+def _extract_triple_backtick_block(text: str) -> str | None:
+    """
+    Allow solution in a fenced block:
+      solution: ``` ...multiline... ```
+    Returns the inner text or None.
+    """
+    m = re.search(r'solution\s*[:=]\s*```(.*?)```', text, flags=re.IGNORECASE|re.DOTALL)
+    return m.group(1).strip() if m else None
+
 def parse_teach(body: str) -> Dict[str, str]:
     """
-    TEACH id=..., date=..., equipment=..., issue=..., solution=..., technician=..., tags=...
-    Pairs can be separated by semicolons OR new lines. Values may be "quoted".
-    Newlines inside quoted values are preserved.
+    Accepts:
+      - Pairs separated by semicolons OR new lines
+      - key=value OR key: value
+      - Straight or smart quotes
+      - Long multi-line solution either in "quotes" or fenced as ```...```
     """
     text = body.strip()
     if text.upper().startswith("TEACH"):
         text = text[5:].strip()
 
-    # Split on semicolons OR newlines, but not inside double quotes
-    parts = re.split(r'[\n;]+(?=(?:[^"]*"[^"]*")*[^"]*$)', text)
+    # Normalise smart quotes
+    text = text.replace("“", '"').replace("”", '"')
 
     data: Dict[str, str] = {}
+
+    # Prefer fenced block for solution, if present
+    fenced = _extract_triple_backtick_block(text)
+    if fenced:
+        data["solution"] = fenced
+        # Remove it from text so we don't double-parse
+        text = re.sub(r'solution\s*[:=]\s*```(.*?)```', 'solution="<fenced>"', text, flags=re.IGNORECASE|re.DOTALL)
+
+    # Split on ; or newline not inside double quotes
+    parts = re.split(r'[\n;]+(?=(?:[^"]*"[^"]*")*[^"]*$)', text)
+
     for p in parts:
         p = p.strip()
-        if not p or "=" not in p:
+        if not p:
             continue
-        k, v = p.split("=", 1)
-        k = k.strip().lower()
-        v = v.strip()
-        # strip one level of wrapping double quotes, if present
-        if len(v) >= 2 and v[0] == '"' and v[-1] == '"':
-            v = v[1:-1]
-        data[k] = v
+        m = re.match(r'^([A-Za-z_]+)\s*[:=]\s*(.+)$', p)
+        if not m:
+            continue
+        key = m.group(1).strip().lower()
+        val = m.group(2).strip()
+
+        if key not in _TEACH_KEYS:
+            continue
+
+        # If value was placeholder for fenced content, keep earlier extracted solution
+        if key == "solution" and val == "<fenced>" and "solution" in data:
+            continue
+
+        # Strip one layer of wrapping quotes
+        if len(val) >= 2 and val[0] == '"' and val[-1] == '"':
+            val = val[1:-1]
+
+        data[key] = val
+
     return data
 
+# ---------- Search helpers ----------
 def format_hits(rows: List[Dict[str, str]]) -> str:
     bullets = []
     for r in rows:
@@ -150,18 +183,14 @@ def format_hits(rows: List[Dict[str, str]]) -> str:
         )
     return "\n".join(bullets)
 
-# ---------- Semantic Search (TF-IDF) ----------
 _tfidf: TfidfVectorizer | None = None
 _tfidf_matrix = None
 _tfidf_index_rows: List[int] | None = None
 
 def _build_tfidf(df: pd.DataFrame):
-    """Build or rebuild the TF-IDF index from the dataframe."""
     global _tfidf, _tfidf_matrix, _tfidf_index_rows
     if df.empty:
-        _tfidf = None
-        _tfidf_matrix = None
-        _tfidf_index_rows = None
+        _tfidf = _tfidf_matrix = _tfidf_index_rows = None
         return
     texts = (
         df['equipment'].fillna('') + ' ' +
@@ -170,24 +199,18 @@ def _build_tfidf(df: pd.DataFrame):
         df['technician'].fillna('') + ' ' +
         df['tags'].fillna('')
     ).astype(str).tolist()
-    _tfidf = TfidfVectorizer(
-        lowercase=True,
-        stop_words="english",
-        ngram_range=(1, 3),  # capture short phrases
-        min_df=1
-    )
+    _tfidf = TfidfVectorizer(lowercase=True, stop_words="english", ngram_range=(1,3), min_df=1)
     _tfidf_matrix = _tfidf.fit_transform(texts)
     _tfidf_index_rows = df.index.tolist()
 
 def semantic_search(df: pd.DataFrame, query: str, k: int = 6) -> pd.DataFrame:
-    """Return top-k rows by cosine similarity. Builds the index on-demand if needed."""
     global _tfidf, _tfidf_matrix, _tfidf_index_rows
     if _tfidf is None or _tfidf_matrix is None or not _tfidf_index_rows:
         _build_tfidf(df)
         if _tfidf is None:
             return pd.DataFrame(columns=df.columns)
     q_vec = _tfidf.transform([query])
-    sims = linear_kernel(q_vec, _tfidf_matrix).ravel()  # cosine similarity
+    sims = linear_kernel(q_vec, _tfidf_matrix).ravel()
     if sims.max(initial=0) <= 0:
         return pd.DataFrame(columns=df.columns)
     top_idx = sims.argsort()[::-1][:k]
@@ -196,13 +219,10 @@ def semantic_search(df: pd.DataFrame, query: str, k: int = 6) -> pd.DataFrame:
     out["score"] = sims[top_idx]
     return out.sort_values("score", ascending=False)
 
-# ---------- Fuzzy fallback (RapidFuzz) ----------
-def fuzzy_search(df: pd.DataFrame, question: str, limit: int = 6, threshold: int = 50) -> pd.DataFrame:
-    """Fallback fuzzy search to handle typos/near-misses."""
+def fuzzy_search(df: pd.DataFrame, question: str, limit: int = 6, threshold: int = 45) -> pd.DataFrame:
     if df.empty:
         return df
     q = question.lower()
-
     hay = df.assign(
         search_text=(
             df['equipment'].str.lower() + ' ' +
@@ -212,36 +232,29 @@ def fuzzy_search(df: pd.DataFrame, question: str, limit: int = 6, threshold: int
             df['tags'].str.lower()
         ).fillna("")
     )
-
     hay["score"] = hay["search_text"].apply(lambda t: max(
         fuzz.partial_ratio(q, t),
         fuzz.token_set_ratio(q, t),
         fuzz.QRatio(q, t)
     ))
-
-    hits = hay[hay["score"] >= threshold].copy()
-    hits = hits.sort_values("score", ascending=False)
+    hits = hay[hay["score"] >= threshold].copy().sort_values("score", ascending=False)
     return hits.drop(columns=["search_text"]).head(limit)
 
 # ---------- Optional: nicer phrasing via OpenAI ----------
 def compose_answer(question: str, rows: List[Dict[str, str]]) -> str:
-    """If OPENAI_API_KEY is set, ask it to phrase the answer using ONLY rows."""
     if not OPENAI_API_KEY:
         if not rows:
             return ("I don't have any records for that yet.\n\n"
                     "Teach me with:\n"
-                    "TEACH equipment=..., issue=..., solution=..., technician=..., tags=...\n"
-                    "Optional: id=..., date=YYYY-MM-DD")
-        facts = format_hits(rows)
-        return f"Based on what I've learned:\n{facts}"
+                    "TEACH issue=...; solution=\"...multi-line...\"; technician=...; tags=...\n"
+                    "You can also use new lines and key: value.")
+        return "Based on what I've learned:\n" + format_hits(rows)
     try:
         from openai import OpenAI
         client = OpenAI(api_key=OPENAI_API_KEY)
         context = format_hits(rows) if rows else "(no matching rows)"
-        system = (
-            "You are a strict retrieval bot. Answer ONLY with information provided in the records. "
-            "If nothing matches, say you have no record and ask the user to TEACH."
-        )
+        system = ("You are a strict retrieval bot. Answer ONLY with information provided in the records. "
+                  "If nothing matches, say you have no record and ask the user to TEACH.")
         user = f"Question: {question}\n\nRecords:\n{context}"
         resp = client.chat.completions.create(
             model=OPENAI_MODEL,
@@ -250,41 +263,47 @@ def compose_answer(question: str, rows: List[Dict[str, str]]) -> str:
             temperature=0.0,
         )
         return resp.choices[0].message.content.strip()
-    except Exception as e:
-        facts = format_hits(rows)
-        return f"Based on what I've learned:\n{facts}\n\n(Note: phrasing fallback due to: {e})"
+    except Exception:
+        return "Based on what I've learned:\n" + format_hits(rows)
 
 # ---------- Flask ----------
 app = Flask(__name__)
 
-@app.route("/", methods=["GET"])
+@app.get("/")
 def health():
     return "OK", 200
 
-@app.route("/sync", methods=["GET", "POST"])
-def sync_http():
-    """
-    Pull the latest Learned.csv from GitHub, rebuild the search index,
-    and return a small JSON status.
-    """
+@app.post("/sync")
+def sync():
     note = sync_from_github()
     df = load_df()
     _build_tfidf(df)
-    return {"status": "ok", "message": note, "count": int(len(df))}, 200
+    return {"status": "ok", "message": note, "rows": len(df)}, 200
 
-@app.route("/whatsapp", methods=["POST"])
+@app.post("/whatsapp")
 def whatsapp():
     body = (request.values.get("Body") or "").strip()
     from_num = request.values.get("From", "<unknown>")
-    print(f"📩 From {from_num} :: {body}")
+    print(f"📩 From {from_num} :: {body[:120]}{'...' if len(body)>120 else ''}")
 
     tw = MessagingResponse()
     upper = body.upper()
 
+    # ----- TEACH -----
     if upper.startswith("TEACH"):
         data = parse_teach(body)
+
+        # If nothing parsed, tell the user how to send it
+        if not any(data.get(k) for k in _TEACH_KEYS):
+            tw.message(
+                "I couldn't parse any TEACH fields.\n"
+                "Use key=value (or key: value). Separate by ';' or new lines.\n"
+                'Example:\nTEACH issue=O2 clean; solution="Use Blue Gold"; technician=Hamish; tags=oxygen,cleaning'
+            )
+            return str(tw)
+
         if not data.get("solution") and not data.get("issue"):
-            tw.message("Please include at least issue=... or solution=... in your TEACH command.")
+            tw.message('Please include at least issue=... or solution=... (wrap long text in quotes or ```fenced``` block).')
             return str(tw)
 
         df = load_df()
@@ -297,45 +316,28 @@ def whatsapp():
             "technician": data.get("technician", ""),
             "tags":       data.get("tags", ""),
         }
-        # upsert by id (replace any existing row with same id)
+
+        # upsert by id
         df = df[df["id"] != row["id"]]
         df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
         save_df_local(df)
         gh_msg = push_to_github(df, f"Teach {row['id']} from WhatsApp")
-
-        # Rebuild TF-IDF index after update
         _build_tfidf(df)
 
-        tw.message(f"✅ Learned {row['id']} | {row['equipment']} | {row['issue']}\n{gh_msg}")
+        # Echo back what was learned (preview)
+        preview = "; ".join(
+            f"{k}={ (row[k][:60] + '...') if len(row[k])>60 else row[k] }"
+            for k in ("equipment","issue","solution","technician","tags") if row[k]
+        )
+        tw.message(f"✅ Learned {row['id']} on {row['date']}\n{preview}\n{gh_msg}")
         return str(tw)
 
-    if upper in ("SYNC", "RELOAD"):
+    # ----- SYNC / LIST / DELETE -----
+    if upper in ("SYNC","RELOAD"):
         note = sync_from_github()
         df = load_df()
-
-        # Rebuild TF-IDF after sync
         _build_tfidf(df)
-
-        tw.message(f"🔄 Reloaded records ({len(df)}). {note}")
-        return str(tw)
-
-    if upper.startswith("DELETE"):
-        m = re.search(r"id\s*=\s*([\w\-]+)", body, flags=re.IGNORECASE)
-        if not m:
-            tw.message("Usage: DELETE id=YOUR_ID")
-            return str(tw)
-        rid = m.group(1)
-        df = load_df()
-        before = len(df)
-        df = df[df["id"] != rid]
-        after = len(df)
-        save_df_local(df)
-        gh_msg = push_to_github(df, f"Delete {rid} from WhatsApp")
-
-        # Rebuild TF-IDF after deletion
-        _build_tfidf(df)
-
-        tw.message(f"🗑️ Deleted {rid}. {before - after} row(s) removed.\n{gh_msg}")
+        tw.message(f"🔄 Reloaded {len(df)} records. {note}")
         return str(tw)
 
     if upper.startswith("LIST"):
@@ -349,63 +351,75 @@ def whatsapp():
             return str(tw)
         lines = []
         for _, r in df.iterrows():
-            lines.append(f"{r['id']} | {r['date']} | {r['equipment']} | {r['issue']} -> {r['solution']}")
+            lines.append(f"{r['id']} | {r['date']} | {r['equipment']} | {r['issue']} -> {r['solution'][:70]}{'...' if len(r['solution'])>70 else ''}")
         tw.message("Recent:\n" + "\n".join(lines))
         return str(tw)
 
-    if upper in ("HELP", "?"):
+    if upper.startswith("DELETE"):
+        m = re.search(r"id\s*[:=]\s*([\w\-]+)", body, flags=re.IGNORECASE)
+        if not m:
+            tw.message("Usage: DELETE id=YOUR_ID")
+            return str(tw)
+        rid = m.group(1)
+        df = load_df()
+        before = len(df)
+        df = df[df["id"] != rid]
+        after = len(df)
+        save_df_local(df)
+        gh_msg = push_to_github(df, f"Delete {rid} from WhatsApp")
+        _build_tfidf(df)
+        tw.message(f"🗑️ Deleted {rid}. {before-after} row(s) removed.\n{gh_msg}")
+        return str(tw)
+
+    if upper in ("HELP","?"):
         tw.message(
             "Commands:\n"
-            "TEACH id=O2CLEAN; date=2025-08-08; equipment=\"O2 systems\"; "
-            "issue=Oxygen cleaning; solution=\"Use Blue Gold\"; technician=Angus; tags=oxygen,cleaning\n"
-            "LIST 5\nDELETE id=...\nSYNC (pull latest from GitHub)\n"
-            "Ask free-form questions too. I only answer from what I've learned."
+            "TEACH (semicolon OR newline separated; = or : accepted):\n"
+            'TEACH issue=O2 clean; solution="Use Blue Gold"; technician=Hamish; tags=oxygen,cleaning\n'
+            "You can also send:\n"
+            "TEACH\nissue: valve leaks\nsolution: ```\n1) Check PRV...\n2) Reseat...\n```\n\n"
+            "LIST 5 | DELETE id=L2025... | SYNC\n"
+            "Ask free-form questions too; I answer from what I've learned."
         )
         return str(tw)
 
-    # Free-form Q&A → semantic first, fuzzy fallback
+    # ----- Free-form Q&A -----
     df = load_df()
     hits = semantic_search(df, body, k=6)
     if hits.empty:
-        hits = fuzzy_search(df, body, limit=6, threshold=50)
+        hits = fuzzy_search(df, body, limit=6, threshold=45)
 
     if not hits.empty:
         rows = hits.drop(columns=["score"], errors="ignore").to_dict(orient="records")
         answer = compose_answer(body, rows)
         tw.message(answer)
         return str(tw)
-    else:
-        # No matches found. Learn as new, unsolved issue.
-        new_entry_id = new_id()
-        row = {
-            "id":         new_entry_id,
-            "date":       now_date(),
-            "equipment":  "",
-            "issue":      body,
-            "solution":   "",
-            "technician": "",
-            "tags":       "unsolved",
-        }
 
-        df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
-        save_df_local(df)
-        gh_msg = push_to_github(df, f"Auto-learn new issue {new_entry_id} from WhatsApp")
+    # No match → auto-learn as unsolved
+    new_entry_id = new_id()
+    row = {
+        "id":         new_entry_id,
+        "date":       now_date(),
+        "equipment":  "",
+        "issue":      body,
+        "solution":   "",
+        "technician": "",
+        "tags":       "unsolved",
+    }
+    df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
+    save_df_local(df)
+    gh_msg = push_to_github(df, f"Auto-learn new issue {new_entry_id} from WhatsApp")
+    _build_tfidf(df)
 
-        # Rebuild TF-IDF after adding new row
-        _build_tfidf(df)
-
-        reply_msg = (
-            f"✅ Learned new issue: \"{body}\"\n"
-            f"ID: {new_entry_id}\n"
-            f"{gh_msg}\n\n"
-            "I don't have a solution yet. When you do, teach me with:\n"
-            f"TEACH id={new_entry_id}; solution=..."
-        )
-        tw.message(reply_msg)
-        return str(tw)
+    tw.message(
+        f"✅ Learned new issue: \"{body}\"\n"
+        f"ID: {new_entry_id}\n{gh_msg}\n\n"
+        "When you have the fix, reply with:\n"
+        f"TEACH id={new_entry_id}; solution=\"...\""
+    )
+    return str(tw)
 
 # ---------- Entrypoint ----------
 if __name__ == "__main__":
-    # Local run: Flask dev server. On Render with gunicorn, this block is ignored.
     port = int(os.getenv("PORT", "5000"))
     app.run(host="0.0.0.0", port=port, debug=True)
