@@ -116,14 +116,16 @@ def new_id() -> str:
 def parse_teach(body: str) -> Dict[str, str]:
     """
     TEACH id=..., date=..., equipment=..., issue=..., solution=..., technician=..., tags=...
-    Semicolons separate pairs. Values may be "quoted".
+    Pairs can be separated by semicolons OR new lines. Values may be "quoted".
+    Newlines inside quoted values are preserved.
     """
     text = body.strip()
     if text.upper().startswith("TEACH"):
         text = text[5:].strip()
 
-    # Split on semicolons NOT inside double quotes
-    parts = re.split(r';(?=(?:[^"]*"[^"]*")*[^"]*$)', text)
+    # Split on semicolons OR newlines, but not inside double quotes
+    parts = re.split(r'[\n;]+(?=(?:[^"]*"[^"]*")*[^"]*$)', text)
+
     data: Dict[str, str] = {}
     for p in parts:
         p = p.strip()
@@ -132,7 +134,7 @@ def parse_teach(body: str) -> Dict[str, str]:
         k, v = p.split("=", 1)
         k = k.strip().lower()
         v = v.strip()
-        # strip wrapping quotes
+        # strip one level of wrapping double quotes, if present
         if len(v) >= 2 and v[0] == '"' and v[-1] == '"':
             v = v[1:-1]
         data[k] = v
@@ -259,6 +261,17 @@ app = Flask(__name__)
 def health():
     return "OK", 200
 
+@app.route("/sync", methods=["GET", "POST"])
+def sync_http():
+    """
+    Pull the latest Learned.csv from GitHub, rebuild the search index,
+    and return a small JSON status.
+    """
+    note = sync_from_github()
+    df = load_df()
+    _build_tfidf(df)
+    return {"status": "ok", "message": note, "count": int(len(df))}, 200
+
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp():
     body = (request.values.get("Body") or "").strip()
@@ -344,7 +357,7 @@ def whatsapp():
         tw.message(
             "Commands:\n"
             "TEACH id=O2CLEAN; date=2025-08-08; equipment=\"O2 systems\"; "
-            "issue=Oxygen cleaning; solution=Use Blue Gold; technician=Angus; tags=oxygen,cleaning\n"
+            "issue=Oxygen cleaning; solution=\"Use Blue Gold\"; technician=Angus; tags=oxygen,cleaning\n"
             "LIST 5\nDELETE id=...\nSYNC (pull latest from GitHub)\n"
             "Ask free-form questions too. I only answer from what I've learned."
         )
